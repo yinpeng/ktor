@@ -2,6 +2,7 @@ package org.jetbrains.ktor.tests.routing
 
 import org.jetbrains.ktor.application.*
 import org.jetbrains.ktor.http.*
+import org.jetbrains.ktor.response.*
 import org.jetbrains.ktor.routing.*
 import org.jetbrains.ktor.tests.*
 import org.junit.*
@@ -241,6 +242,106 @@ class RoutingProcessingTest {
             assertTrue(routingInterceptorWrapped, "should have processed nested routing interceptor in an after phase")
             assertTrue(rootIntercepted, "should have processed root interceptor")
             assertEquals(userName, "john", "should have processed get handler on /user/username node")
+        }
+    }
+
+    @Test fun `verify headers processing`() {
+        val testHost = createTestHost()
+
+        testHost.application.routing {
+            route("/reject") {
+                header("H", "value", HttpHeaderRouteSelector.MissingHeaderAction.REJECT) {
+                    handle {
+                        call.respond("OK")
+                    }
+                }
+            }
+            route("/accept") {
+                header("H", "value", HttpHeaderRouteSelector.MissingHeaderAction.ACCEPT) {
+                    handle {
+                        call.respond("OK")
+                    }
+                }
+            }
+        }
+
+        testHost.handleWebSocket("/reject") {
+            addHeader("H", "value")
+        }.let { call ->
+            assertTrue { call.requestHandled }
+        }
+        testHost.handleWebSocket("/reject") {
+            addHeader("H", "other-value")
+        }.let { call ->
+            assertFalse { call.requestHandled }
+        }
+
+        testHost.handleWebSocket("/reject") {
+        }.let { call ->
+            assertFalse { call.requestHandled }
+        }
+
+
+        testHost.handleWebSocket("/accept") {
+            addHeader("H", "value")
+        }.let { call ->
+            assertTrue { call.requestHandled }
+        }
+        testHost.handleWebSocket("/accept") {
+            addHeader("H", "other-value")
+        }.let { call ->
+            assertFalse { call.requestHandled }
+        }
+
+        testHost.handleWebSocket("/accept") {
+        }.let { call ->
+            assertTrue { call.requestHandled }
+        }
+    }
+
+    @Test fun `verify accept header processing`() {
+        val testHost = createTestHost()
+
+        testHost.application.routing {
+            route("/") {
+                contentType(ContentType.Text.Plain) {
+                    handle {
+                        call.respond("OK")
+                    }
+                }
+                contentType(ContentType.Application.Json) {
+                    handle {
+                        call.response.contentType(ContentType.Application.Json)
+                        call.respond("{\"status\": \"OK\"}")
+                    }
+                }
+            }
+        }
+
+        testHost.handleWebSocket("/") {
+            addHeader(HttpHeaders.Accept, "text/plain")
+        }.let { call ->
+            assertTrue { call.requestHandled }
+            assertEquals("OK", call.response.content)
+        }
+
+        testHost.handleWebSocket("/") {
+            addHeader(HttpHeaders.Accept, "application/json")
+        }.let { call ->
+            assertTrue { call.requestHandled }
+            assertEquals("{\"status\": \"OK\"}", call.response.content)
+        }
+
+        testHost.handleWebSocket("/") {
+        }.let { call ->
+            assertTrue { call.requestHandled }
+            assertEquals("OK", call.response.content)
+        }
+
+        testHost.handleWebSocket("/") {
+            addHeader(HttpHeaders.Accept, "text/html")
+        }.let { call ->
+            assertFalse { call.requestHandled }
         }
     }
 }

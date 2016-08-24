@@ -52,8 +52,10 @@ fun Route.optionalParam(name: String, build: Route.() -> Unit): Route {
 /**
  * Builds a route to match header with specified [name] and [value]
  */
-fun Route.header(name: String, value: String, build: Route.() -> Unit): Route {
-    val selector = HttpHeaderRouteSelector(name, value)
+fun Route.header(name: String, value: String,
+                 missingHeaderAction: HttpHeaderRouteSelector.MissingHeaderAction = HttpHeaderRouteSelector.MissingHeaderAction.REJECT,
+                 build: Route.() -> Unit): Route {
+    val selector = HttpHeaderRouteSelector(name, value, missingHeaderAction)
     return select(selector).apply(build)
 }
 
@@ -61,7 +63,7 @@ fun Route.header(name: String, value: String, build: Route.() -> Unit): Route {
  * Builds a route to match requests with specified [contentType]
  */
 fun Route.contentType(contentType: ContentType, build: Route.() -> Unit): Route {
-    return header("Accept", "${contentType.contentType}/${contentType.contentSubtype}", build)
+    return header(HttpHeaders.Accept, "${contentType.contentType}/${contentType.contentSubtype}", HttpHeaderRouteSelector.MissingHeaderAction.ACCEPT, build)
 }
 
 /**

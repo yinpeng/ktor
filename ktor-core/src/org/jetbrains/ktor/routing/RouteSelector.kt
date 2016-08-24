@@ -61,7 +61,7 @@ data class UriPartConstantRouteSelector(val name: String) : RouteSelector {
         return RouteSelectorEvaluation.Failed
     }
 
-    override fun toString(): String = "$name"
+    override fun toString(): String = name
 }
 
 data class UriPartParameterRouteSelector(val name: String, val prefix: String = "", val suffix: String = "") : RouteSelector {
@@ -156,15 +156,27 @@ data class HttpMethodRouteSelector(val method: HttpMethod) : RouteSelector {
     override fun toString(): String = "(method:${method.value})"
 }
 
-data class HttpHeaderRouteSelector(val name: String, val value: String) : RouteSelector {
+data class HttpHeaderRouteSelector(val name: String, val value: String, val missingHeaderAction: MissingHeaderAction = HttpHeaderRouteSelector.MissingHeaderAction.REJECT) : RouteSelector {
     override fun evaluate(context: RoutingResolveContext, index: Int): RouteSelectorEvaluation {
-        val headers = context.headers[name]
-        val parsedHeaders = parseAndSortHeader(headers)
-        val header = parsedHeaders.firstOrNull { it.value == value }
-        if (header != null)
-            return RouteSelectorEvaluation(true, header.quality)
+        val headers = context.headers.getAll(name)
+        if (headers == null) {
+            return when (missingHeaderAction) {
+                MissingHeaderAction.REJECT -> RouteSelectorEvaluation.Failed
+                MissingHeaderAction.ACCEPT -> RouteSelectorEvaluation(true, RouteSelectorEvaluation.qualityMissing)
+            }
+        }
+
+        val matchedHeader = headers.flatMap(::parseAndSortHeader).firstOrNull { it.value == value }
+        if (matchedHeader != null)
+            return RouteSelectorEvaluation(true, matchedHeader.quality)
+
         return RouteSelectorEvaluation.Failed
     }
 
     override fun toString(): String = "(header:$name = $value)"
+
+    enum class MissingHeaderAction {
+        ACCEPT,
+        REJECT
+    }
 }
