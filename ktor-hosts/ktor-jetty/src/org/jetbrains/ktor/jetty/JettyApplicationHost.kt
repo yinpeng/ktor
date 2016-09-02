@@ -104,7 +104,7 @@ class JettyApplicationHost(override val hostConfig: ApplicationHostConfig,
             (buffer as Ticket).release()
         }
 
-        class Ticket(bb: ByteBuffer) : ReleasablePoolTicket(bb)
+        private inner class Ticket(bb: ByteBuffer) : ReleasablePoolTicket(bb)
     }
 
     private val MULTI_PART_CONFIG = MultipartConfigElement(System.getProperty("java.io.tmpdir"))
