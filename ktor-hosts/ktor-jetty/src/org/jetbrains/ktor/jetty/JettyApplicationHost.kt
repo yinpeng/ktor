@@ -83,6 +83,7 @@ class JettyApplicationHost(override val hostConfig: ApplicationHostConfig,
             ServerConnector(this, *connectionFactories).apply {
                 host = ktorConnector.host
                 port = ktorConnector.port
+                soLingerTime = 50
             }
         }.toTypedArray()
 
