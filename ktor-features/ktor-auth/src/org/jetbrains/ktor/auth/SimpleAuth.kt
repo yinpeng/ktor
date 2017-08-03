@@ -1,20 +1,31 @@
 package org.jetbrains.ktor.auth
 
-import org.jetbrains.ktor.config.*
 import org.jetbrains.ktor.util.*
 import java.security.MessageDigest
 
 data class UserIdPrincipal(val name: String) : Principal
 data class UserPasswordCredential(val name: String, val password: String) : Credential
 
-class UserHashedTableAuth(val digester: (String) -> ByteArray, val table: Map<String, ByteArray>) {
+interface HashingConfiguration {
+    val hashAlgorithm: String
+    val salt: String
+    val users: List<UserConfiguration>
+}
+
+interface UserConfiguration {
+    val name: String
+    val hash: String
+}
+
+class UserHashedTableAuth(val digester: (String) -> ByteArray,
+                          val table: Map<String, ByteArray>) {
 
     // shortcut for tests
     constructor(table: Map<String, ByteArray>) : this(getDigestFunction("SHA-256", "ktor"), table)
 
-    constructor(config: ApplicationConfig) : this(getDigestFunction(
-            config.property("hashAlgorithm").getString(),
-            config.property("salt").getString()), config.parseUsers())
+    constructor(config: HashingConfiguration) : this(getDigestFunction(
+            config.hashAlgorithm,
+            config.salt), config.users.associateBy({ it.name }, { decodeBase64(it.hash) }))
 
     init {
         if (table.isEmpty()) {
@@ -31,8 +42,3 @@ class UserHashedTableAuth(val digester: (String) -> ByteArray, val table: Map<St
         return null
     }
 }
-
-private fun ApplicationConfig.parseUsers(name: String = "users") =
-        configList(name)
-                .map { it.property("name").getString() to decodeBase64(it.property("hash").getString()) }
-                .toMap()

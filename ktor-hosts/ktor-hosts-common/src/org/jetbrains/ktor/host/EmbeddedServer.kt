@@ -14,7 +14,6 @@ fun <THost : ApplicationHost> embeddedServer(factory: ApplicationHostFactory<THo
                                              module: Application.() -> Unit): THost {
     val environment = applicationHostEnvironment {
         this.log = LoggerFactory.getLogger("ktor.application")
-        this.watchPaths = watchPaths
         this.module(module)
 
         connector {

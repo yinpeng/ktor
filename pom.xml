@@ -119,9 +119,9 @@
             <version>1.7.25</version>
         </dependency>
         <dependency>
-            <groupId>com.typesafe</groupId>
-            <artifactId>config</artifactId>
-            <version>1.3.1</version>
+            <groupId>com.jdiazcano.cfg4k</groupId>
+            <artifactId>cfg4k-hocon</artifactId>
+            <version>0.7.2</version>
         </dependency>
     </dependencies>
 
@@ -312,6 +312,11 @@
             <id>bintray-kotlin-eap-1.1</id>
             <name>bintray</name>
             <url>https://dl.bintray.com/kotlin/kotlin-eap-1.1</url>
+        </repository>
+        <repository>
+            <id>bintray-jdiazcano-cfg4k</id>
+            <name>bintray</name>
+            <url>http://dl.bintray.com/jdiazcano/cfg4k</url>
         </repository>
     </repositories>
 </project>
