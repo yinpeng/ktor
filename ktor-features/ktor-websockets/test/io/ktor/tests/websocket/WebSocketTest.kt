@@ -2,6 +2,7 @@ package io.ktor.tests.websocket
 
 import kotlinx.coroutines.experimental.channels.*
 import io.ktor.application.*
+import io.ktor.http.*
 import io.ktor.routing.*
 import io.ktor.testing.*
 import io.ktor.util.*
@@ -261,6 +262,60 @@ class WebSocketTest {
                 call.response.awaitWebSocket(Duration.ofSeconds(10))
 
                 assertEquals("ABC123", receivedText)
+            }
+        }
+    }
+
+    @Test
+    fun testSubProtocol() {
+        withTestApplication {
+            application.install(WebSockets)
+
+            application.routing {
+                webSocketProtocol("binary") {
+                    webSocket("/ws") {
+                        outgoing.send(Frame.Binary(true, ByteBuffer.wrap(byteArrayOf(1, 2, 3))))
+                    }
+                }
+                webSocketProtocol("text") {
+                    webSocket("/ws") {
+                        outgoing.send(Frame.Text("[1, 2, 3]"))
+                    }
+                }
+            }
+
+            handleWebSocket("/ws") {
+                addHeader(HttpHeaders.SecWebSocketProtocol, "text")
+            }.let { call ->
+                call.response.awaitWebSocket(Duration.ofSeconds(10))
+                val p = FrameParser()
+                val bb = ByteBuffer.wrap(call.response.byteContent)
+                p.frame(bb)
+
+                assertEquals(FrameType.TEXT, p.frameType)
+                assertTrue { p.bodyReady }
+
+                val bytes = ByteArray(p.length.toInt())
+                bb.get(bytes)
+
+                assertEquals("[1, 2, 3]", bytes.toString(Charsets.ISO_8859_1))
+            }
+
+            handleWebSocket("/ws") {
+                addHeader(HttpHeaders.SecWebSocketProtocol, "binary")
+            }.let { call ->
+                call.response.awaitWebSocket(Duration.ofSeconds(10))
+                val p = FrameParser()
+                val bb = ByteBuffer.wrap(call.response.byteContent)
+                p.frame(bb)
+
+                assertEquals(FrameType.BINARY, p.frameType)
+                assertTrue { p.bodyReady }
+
+                val bytes = ByteArray(p.length.toInt())
+                bb.get(bytes)
+
+                assertTrue { bytes.contentEquals(byteArrayOf(1, 2, 3)) }
             }
         }
     }

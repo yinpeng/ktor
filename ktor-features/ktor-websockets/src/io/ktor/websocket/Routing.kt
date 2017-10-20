@@ -6,37 +6,41 @@ import io.ktor.http.*
 import io.ktor.pipeline.*
 import io.ktor.response.*
 import io.ktor.routing.*
+import io.ktor.util.*
 
-fun Route.webSocketRaw(protocol: String? = null, handler: suspend WebSocketSession.(WebSocketUpgrade.Dispatchers) -> Unit) {
+fun Route.webSocketProtocol(protocol: String, block: Route.() -> Unit) {
+    select(WebSocketProtocolsSelector(protocol)).block()
+}
+
+fun Route.webSocketRaw(handler: suspend WebSocketSession.(WebSocketUpgrade.Dispatchers) -> Unit) {
     application.feature(WebSockets) // early require
 
     header(HttpHeaders.Connection, "Upgrade") {
         header(HttpHeaders.Upgrade, "websocket") {
-            webSocketProtocol(protocol) {
-                handle {
-                    call.respondWebSocketRaw(protocol, handler)
-                }
+            handle {
+                val protocol = call.parameters[HttpHeaders.SecWebSocketProtocol]
+                call.respondWebSocketRaw(protocol, handler)
             }
         }
     }
 }
 
-fun Route.webSocketRaw(path: String, protocol: String? = null, handler: suspend WebSocketSession.(WebSocketUpgrade.Dispatchers) -> Unit) {
+fun Route.webSocketRaw(path: String, handler: suspend WebSocketSession.(WebSocketUpgrade.Dispatchers) -> Unit) {
     application.feature(WebSockets) // early require
 
     route(HttpMethod.Get, path) {
-        webSocketRaw(protocol, handler)
+        webSocketRaw(handler)
     }
 }
 
-fun Route.webSocket(protocol: String? = null, handler: suspend DefaultWebSocketSession.() -> Unit) {
-    webSocketRaw(protocol) { dispatchers ->
+fun Route.webSocket(handler: suspend DefaultWebSocketSession.() -> Unit) {
+    webSocketRaw { dispatchers ->
         proceedWebSocket(dispatchers, handler)
     }
 }
 
-fun Route.webSocket(path: String, protocol: String? = null, handler: suspend DefaultWebSocketSession.() -> Unit) {
-    webSocketRaw(path, protocol) { dispatchers ->
+fun Route.webSocket(path: String, handler: suspend DefaultWebSocketSession.() -> Unit) {
+    webSocketRaw(path) { dispatchers ->
         proceedWebSocket(dispatchers, handler)
     }
 }
@@ -59,19 +63,12 @@ private suspend fun WebSocketSession.proceedWebSocket(dispatchers: WebSocketUpgr
     ws.run(handler)
 }
 
-private fun Route.webSocketProtocol(protocol: String?, block: Route.() -> Unit) {
-    if (protocol == null) {
-        block()
-    } else {
-        select(WebSocketProtocolsSelector(protocol)).block()
-    }
-}
-
 private class WebSocketProtocolsSelector(val requiredProtocol: String) : RouteSelector(RouteSelectorEvaluation.qualityConstant) {
     override fun evaluate(context: RoutingResolveContext, index: Int): RouteSelectorEvaluation {
         val protocols = context.headers[HttpHeaders.SecWebSocketProtocol] ?: return RouteSelectorEvaluation.Failed
         if (requiredProtocol in parseHeaderValue(protocols).map { it.value }) {
-            return RouteSelectorEvaluation.Constant
+            return RouteSelectorEvaluation(true, RouteSelectorEvaluation.qualityConstant,
+                    valuesOf(HttpHeaders.SecWebSocketProtocol, listOf(requiredProtocol)))
         }
 
         return RouteSelectorEvaluation.Failed
