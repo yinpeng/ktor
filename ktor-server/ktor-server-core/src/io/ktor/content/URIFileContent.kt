@@ -7,7 +7,7 @@ import java.net.*
 class URIFileContent(val uri: URI, override val contentType: ContentType = ContentType.defaultForFilePath(uri.path)): OutgoingContent.ReadChannelContent(), Resource {
     constructor(url: URL, contentType: ContentType = ContentType.defaultForFilePath(url.path)) : this(url.toURI(), contentType)
 
-    override val headers by lazy { super<Resource>.headers }
+    override val headers by lazy(LazyThreadSafetyMode.NONE) { super<Resource>.headers }
 
     override fun readFrom() = uri.toURL().openStream().toReadChannel() // TODO: use http client
 

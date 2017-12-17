@@ -130,7 +130,7 @@ class PartialContentSupport(val maxRangeCount: Int) {
 
             override fun readFrom() = content.readFrom()
 
-            override val headers by lazy {
+            override val headers by lazy(LazyThreadSafetyMode.NONE) {
                 ValuesMap.build(true) {
                     appendAll(content.headers)
                     acceptRanges()
@@ -141,7 +141,7 @@ class PartialContentSupport(val maxRangeCount: Int) {
         class Single(val get: Boolean, val delegateHeaders: ValuesMap, val source: ReadChannel, val range: LongRange, val fullLength: Long) : RangeChannelProvider() {
             override val status: HttpStatusCode? get() = if (get) HttpStatusCode.PartialContent else null
             override fun readFrom() = RangeReadChannel(source, range.start, range.length, closeSource = false)
-            override val headers by lazy {
+            override val headers by lazy(LazyThreadSafetyMode.NONE) {
                 ValuesMap.build(true) {
                     appendFiltered(delegateHeaders) { name, _ -> !name.equals(HttpHeaders.ContentLength, true) }
                     acceptRanges()
