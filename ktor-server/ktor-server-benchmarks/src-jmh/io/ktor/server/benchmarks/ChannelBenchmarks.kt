@@ -10,8 +10,13 @@ import java.nio.file.*
 
 @State(Scope.Benchmark)
 class ChannelBenchmarks {
-    val file = listOf(File("test/io/ktor/tests/nio/DeflaterReadChannelTest.kt"),
-            File("ktor-server/ktor-server-core-tests/test/io/ktor/tests/nio/DeflaterReadChannelTest.kt")).first(File::exists)
+    private val coreDirectory = File("../ktor-server-core").absoluteFile.normalize()
+    private val smallFile = File(coreDirectory, "build.gradle")
+    private val largeFile = File(coreDirectory, "build").walkTopDown().maxDepth(2).filter {
+        it.name.startsWith("ktor-server-core") && it.name.endsWith("SNAPSHOT.jar")
+    }.single()
+
+    private val file = largeFile
 
     @Benchmark
     fun directReads(): Int {
@@ -51,12 +56,22 @@ class ChannelBenchmarks {
     }
 }
 /*
-ChannelBenchmarks.asyncChannelReads       thrpt   10   47.120 ±  1.486  ops/ms
-ChannelBenchmarks.directReads             thrpt   10  111.603 ± 26.161  ops/ms
-ChannelBenchmarks.directStreamReads       thrpt   10  103.636 ±  9.133  ops/ms
-ChannelBenchmarks.readChannelReads        thrpt   10   54.903 ±  0.754  ops/ms
-ChannelBenchmarks.readChannelStreamReads  thrpt   10   48.044 ±  1.214  ops/ms
- */
+Small file:
+
+ChannelBenchmarks.asyncChannelReads       thrpt   20   48.448 ±  0.415  ops/ms
+ChannelBenchmarks.directReads             thrpt   20  119.661 ± 24.684  ops/ms
+ChannelBenchmarks.directStreamReads       thrpt   20  111.091 ±  4.489  ops/ms
+ChannelBenchmarks.readChannelReads        thrpt   20  116.175 ±  1.269  ops/ms
+ChannelBenchmarks.readChannelStreamReads  thrpt   20  100.482 ±  1.433  ops/ms
+
+Large file:
+
+ChannelBenchmarks.asyncChannelReads       thrpt   20  1.486 ± 0.006  ops/ms
+ChannelBenchmarks.directReads             thrpt   20  6.307 ± 0.117  ops/ms
+ChannelBenchmarks.directStreamReads       thrpt   20  3.337 ± 0.054  ops/ms
+ChannelBenchmarks.readChannelReads        thrpt   20  2.488 ± 0.040  ops/ms
+ChannelBenchmarks.readChannelStreamReads  thrpt   20  2.064 ± 0.029  ops/ms
+*/
 
 fun main(args: Array<String>) {
     benchmark(args) {
