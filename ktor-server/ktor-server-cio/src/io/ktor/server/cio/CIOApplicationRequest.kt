@@ -20,7 +20,7 @@ class CIOApplicationRequest(call: ApplicationCall,
         val qIdx = uri.indexOf('?')
         if (qIdx == -1 || qIdx == uri.lastIndex) return@lazy ValuesMap.Empty
 
-        parseQueryString(uri.substring(qIdx + 1))
+        parseQueryString(uri, startIndex = qIdx + 1)
     }
 
     override val local: RequestConnectionPoint by lazy { object : RequestConnectionPoint {
