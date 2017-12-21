@@ -9,8 +9,8 @@ package io.ktor.pipeline
 @ContextDsl
 class PipelineContext<TSubject : Any, out TContext : Any>(
         val context: TContext,
-        private val interceptors: List<PipelineInterceptor<TSubject, TContext>>,
-        subject: TSubject
+        subject: TSubject,
+        private var interceptors: Iterator<PipelineInterceptor<TSubject, TContext>>?
 ) {
     /**
      * Subject of this pipeline execution
@@ -18,13 +18,11 @@ class PipelineContext<TSubject : Any, out TContext : Any>(
     var subject: TSubject = subject
         private set
 
-    private var index = 0
-
     /**
      * Finishes current pipeline execution
      */
     fun finish() {
-        index = -1
+        interceptors = null
     }
 
     /**
@@ -39,13 +37,8 @@ class PipelineContext<TSubject : Any, out TContext : Any>(
      * Continues execution of the pipeline with the same subject
      */
     suspend fun proceed(): TSubject {
-        while (index >= 0) {
-            if (interceptors.size == index) {
-                index = -1 // finished
-                return subject
-            }
-            val executeInterceptor = interceptors[index]
-            index++
+        while (interceptors != null && interceptors!!.hasNext()) {
+            val executeInterceptor = interceptors!!.next()
             executeInterceptor.invoke(this, subject)
         }
         return subject
