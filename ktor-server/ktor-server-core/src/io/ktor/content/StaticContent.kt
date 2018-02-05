@@ -49,7 +49,7 @@ fun Route.default(localPath: File) {
     val file = staticRootFolder.combine(localPath)
     get {
         if (file.isFile) {
-            call.respond(LocalFileContent(file))
+            call.respond(LocalFileContent(file).applyConfigures(this@default))
         }
     }
 }
@@ -66,7 +66,7 @@ fun Route.file(remotePath: String, localPath: File) {
     val file = staticRootFolder.combine(localPath)
     get(remotePath) {
         if (file.isFile) {
-            call.respond(LocalFileContent(file))
+            call.respond(LocalFileContent(file).applyConfigures(this@file))
         }
     }
 }
@@ -85,7 +85,7 @@ fun Route.files(folder: File) {
         val relativePath = call.parameters.getAll(pathParameterName)?.joinToString(File.separator) ?: return@get
         val file = dir.combineSafe(relativePath)
         if (file.isFile) {
-            call.respond(LocalFileContent(file))
+            call.respond(LocalFileContent(file).applyConfigures(this@files))
         }
     }
 }
@@ -118,7 +118,7 @@ fun Route.resource(remotePath: String, resource: String = remotePath, resourcePa
     get(remotePath) {
         val content = call.resolveResource(resource, packageName)
         if (content != null)
-            call.respond(content)
+            call.respond(content.applyConfigures(this@resource))
     }
 }
 
@@ -131,7 +131,7 @@ fun Route.resources(resourcePackage: String? = null) {
         val relativePath = call.parameters.getAll(pathParameterName)?.joinToString(File.separator) ?: return@get
         val content = call.resolveResource(relativePath, packageName)
         if (content != null)
-            call.respond(content)
+            call.respond(content.applyConfigures(this@resources))
     }
 }
 
@@ -143,6 +143,35 @@ fun Route.defaultResource(resource: String, resourcePackage: String? = null) {
     get {
         val content = call.resolveResource(resource, packageName)
         if (content != null)
-            call.respond(content)
+            call.respond(content.applyConfigures(this@defaultResource))
     }
 }
+
+private val staticContentAspectsKey = AttributeKey<MutableList<OutgoingContent.() -> Unit>>("Aspects")
+
+private fun OutgoingContent.applyConfigures(route: Route): OutgoingContent = apply {
+    route.staticContentConfigurations.forEach { apply(it) }
+}
+
+fun Route.configureContent(configure: OutgoingContent.() -> Unit) {
+    val list = attributes.getOrNull(staticContentAspectsKey)
+            ?: mutableListOf<OutgoingContent.() -> Unit>().also { attributes.put(staticContentAspectsKey, it) }
+    list.add(configure)
+}
+
+/**
+ * List of functions that should be applied to `OutgoingContent` before it is sent out
+ *
+ * Allows specifying versions, cache control, etc.
+ */
+val Route.staticContentConfigurations: List<OutgoingContent.() -> Unit>
+    get() {
+        val local = attributes.getOrNull(staticContentAspectsKey)
+        val parent = parent?.staticContentConfigurations
+        return when {
+            local == null && parent == null -> emptyList()
+            local == null -> parent!! // compiler could figure it out?
+            parent == null -> local
+            else -> parent + local
+        }
+    }

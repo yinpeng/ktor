@@ -20,6 +20,7 @@ class StaticContentTest {
 
     @Test
     fun testStaticContentBuilder() = withTestApplication {
+        application.install(CachingHeaders)
         application.routing {
             static("files") {
                 files(basedir)
@@ -29,6 +30,9 @@ class StaticContentTest {
                 files("features")
                 file("routing/RoutingBuildTest.kt")
                 route("virtual") {
+                    configureContent {
+                        caching = CachingOptions(CacheControl.MaxAge(100))
+                    }
                     default("features/StaticContentTest.kt")
                     file("foobar.kt", "routing/RoutingBuildTest.kt")
                 }
@@ -73,6 +77,7 @@ class StaticContentTest {
         // can serve file from virtual folder with a renamed file
         handleAndAwait(HttpMethod.Get, "/selected/virtual/foobar.kt").let { result ->
             assertTrue(result.requestHandled)
+            assertEquals("max-age=100", result.response.headers[HttpHeaders.CacheControl])
             assertEquals(HttpStatusCode.OK, result.response.status())
         }
         // can serve dir itself if default was given
