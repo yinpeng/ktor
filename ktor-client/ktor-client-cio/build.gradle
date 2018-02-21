@@ -1,5 +1,10 @@
 description = "CIO backend for ktor http client"
 
+test {
+    testLogging.showStandardStreams = true
+    jvmArgs System.getenv('TEST_OPTS')?.split('[ ]+') ?: []
+}
+
 dependencies {
     compile project(":ktor-client:ktor-client-core")
     compile project(":ktor-http-cio")
