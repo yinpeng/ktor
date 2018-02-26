@@ -95,13 +95,13 @@ allprojects {
             reportUndocumented = false
         }
 
-        task dokkaJavadoc(type: org.jetbrains.dokka.gradle.DokkaTask) {
+        task dokkaJavadoc(type: org.jetbrains.dokka.gradle.DokkaTask, dependsOn: compileTestKotlin) {
             outputFormat = 'javadoc'
             outputDirectory = "$buildDir/javadoc"
             reportUndocumented = false
         }
 
-        task dokkaWebsite(type: org.jetbrains.dokka.gradle.DokkaTask) {
+        task dokkaWebsite(type: org.jetbrains.dokka.gradle.DokkaTask, dependsOn: compileTestKotlin) {
             outputFormat = 'kotlin-website'
             outputDirectory = "${rootProject.projectDir}/apidoc"
             reportUndocumented = false

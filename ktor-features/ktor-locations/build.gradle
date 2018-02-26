@@ -3,6 +3,12 @@ dependencies {
     compile project(':ktor-features:ktor-auth')
 }
 
+dokkaJavadoc.samples = [
+        'test/io/ktor/tests/locations/LocationSamples.kt',
+]
+
 dokka {
-    samples = ['test']
+    samples = [
+            'test/io/ktor/tests/locations/LocationSamples.kt',
+    ]
 }
