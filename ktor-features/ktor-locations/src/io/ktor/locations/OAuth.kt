@@ -28,8 +28,6 @@ inline fun <reified T : Any> AuthenticationPipeline.oauthAtLocation(client: Http
 
 /**
  * Non-inline version of [AuthenticationPipeline.oauthAtLocation].
- *
- * @see AuthenticationPipeline.oauthAtLocation
  */
 fun <T : Any> AuthenticationPipeline.oauthWithType(type: KClass<T>,
                                                    client: HttpClient,

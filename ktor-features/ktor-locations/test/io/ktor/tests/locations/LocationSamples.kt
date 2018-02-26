@@ -1,11 +1,12 @@
-package io.ktor.locations
+package io.ktor.tests.locations
 
 import io.ktor.application.*
+import io.ktor.locations.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.util.*
 
-private object LocationSamples {
+object LocationSamples {
     fun annotation() {
         @Location("/user/{user}")
         data class UserPage(val user: String)

@@ -17,7 +17,7 @@ import kotlin.reflect.jvm.*
  * Then you can register sub-routes and handlers for those locations and create links to them
  * using [Locations.href].
  *
- * @sample LocationSamples.feature
+ * @sample io.ktor.tests.locations.LocationSamples.feature
  */
 open class Locations(private val application: Application, private val routeService: LocationRouteService) {
     private val conversionService: ConversionService get() = application.conversionService

@@ -10,7 +10,7 @@ import kotlin.reflect.*
  * Annotation for classes that will act as typed routes.
  * [path] is the route path, including class property names wrapped with curly braces.
  *
- * @sample LocationSamples.annotation
+ * @sample io.ktor.tests.locations.LocationSamples.annotation
  */
 annotation class Location(val path: String)
 
