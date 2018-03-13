@@ -11,6 +11,7 @@ import io.ktor.response.*
 import io.ktor.util.*
 import kotlinx.coroutines.experimental.io.*
 import kotlinx.coroutines.experimental.io.jvm.javaio.*
+import kotlinx.io.core.*
 
 /**
  *    install(ContentNegotiation) {
@@ -76,9 +77,8 @@ class GsonConverter(private val gson: Gson = Gson()) : ContentConverter {
     override suspend fun convertForReceive(context: PipelineContext<ApplicationReceiveRequest, ApplicationCall>): Any? {
         val request = context.subject
         val channel = request.value as? ByteReadChannel ?: return null
-        val reader = channel.toInputStream().reader(context.call.request.contentCharset() ?: Charsets.UTF_8)
-        val type = request.type
-        return gson.fromJson(reader, type.javaObjectType)
+        val reader = channel.readRemaining().readText((context.call.request.contentCharset() ?: Charsets.UTF_8).newDecoder()).reader()
+        return gson.fromJson(reader, request.type.javaObjectType)
     }
 }
 
