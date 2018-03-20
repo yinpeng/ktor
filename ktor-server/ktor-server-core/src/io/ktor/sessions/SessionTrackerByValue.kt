@@ -7,13 +7,13 @@ import kotlin.reflect.*
  * [SessionTracker] that stores the contents of the session as part of HTTP Cookies/Headers.
  * It uses a specific [serializer] to serialize and deserialize objects of type [type].
  */
-class SessionTrackerByValue(val type: KClass<*>, val serializer: SessionSerializer) : SessionTracker {
+class SessionTrackerByValue(val type: KClass<*>, val serializer: SessionSerializer<*>) : SessionTracker {
     override suspend fun load(call: ApplicationCall, transport: String?): Any? {
         return transport?.let { serializer.deserialize(it) }
     }
 
     override suspend fun store(call: ApplicationCall, value: Any): String {
-        val serialized = serializer.serialize(value)
+        val serialized = (serializer as SessionSerializer<Any>).serialize(value)
         return serialized
     }
 

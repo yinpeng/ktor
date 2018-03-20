@@ -12,9 +12,9 @@ import kotlin.reflect.jvm.*
 
 
 inline fun <reified T : Any> autoSerializerOf(): SessionSerializerReflection<T> = autoSerializerOf(T::class)
-fun <T : Any> autoSerializerOf(type: KClass<T>): SessionSerializerReflection<T> = SessionSerializerReflection(type)
+fun <T : Any> autoSerializerOf(type: KClass<T>): SessionSerializerReflection<T> = SessionSerializerReflection<T>(type)
 
-class SessionSerializerReflection<T : Any>(val type: KClass<T>) : SessionSerializer {
+class SessionSerializerReflection<T : Any>(val type: KClass<T>) : SessionSerializer<T> {
     val properties by lazy { type.memberProperties.sortedBy { it.name } }
 
     override fun deserialize(text: String): T {
@@ -38,7 +38,7 @@ class SessionSerializerReflection<T : Any>(val type: KClass<T>) : SessionSeriali
         return instance
     }
 
-    override fun serialize(session: Any): String {
+    override fun serialize(session: T): String {
         if (type == Parameters::class)
             return (session as Parameters).formUrlEncode()
         val typed = session.cast(type)

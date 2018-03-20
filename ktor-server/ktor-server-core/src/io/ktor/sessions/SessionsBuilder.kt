@@ -91,7 +91,7 @@ class CookieIdSessionBuilder<S : Any>(type: KClass<S>) : CookieSessionBuilder<S>
 }
 
 open class CookieSessionBuilder<S : Any>(val type: KClass<S>) {
-    var serializer: SessionSerializer = autoSerializerOf(type)
+    var serializer: SessionSerializer<S> = autoSerializerOf(type)
 
     private val _transformers = mutableListOf<SessionTransportTransformer>()
     val transformers: List<SessionTransportTransformer> get() = _transformers
@@ -103,7 +103,7 @@ open class CookieSessionBuilder<S : Any>(val type: KClass<S>) {
 }
 
 open class HeaderSessionBuilder<S : Any>(val type: KClass<S>) {
-    var serializer: SessionSerializer = autoSerializerOf(type)
+    var serializer: SessionSerializer<S> = autoSerializerOf(type)
 
     private val _transformers = mutableListOf<SessionTransportTransformer>()
     val transformers: List<SessionTransportTransformer> get() = _transformers
