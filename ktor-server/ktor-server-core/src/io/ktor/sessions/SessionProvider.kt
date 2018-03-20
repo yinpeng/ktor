@@ -8,7 +8,7 @@ import kotlin.reflect.*
  * @param transport specifies the [SessionTransport] for this provider
  * @param tracker specifies the [SessionTracker] for this provider
  */
-class SessionProvider(val name: String,
-                      val type: KClass<*>,
+class SessionProvider<T : Any>(val name: String,
+                      val type: KClass<T>,
                       val transport: SessionTransport,
-                      val tracker: SessionTracker)
+                      val tracker: SessionTracker<T>)

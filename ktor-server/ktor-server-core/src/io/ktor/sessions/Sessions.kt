@@ -8,11 +8,11 @@ import kotlin.reflect.*
 /**
  * Sessions reature that provides a mechanism to persist information between requests.
  */
-class Sessions(val providers: List<SessionProvider>) {
+class Sessions(val providers: List<SessionProvider<*>>) {
     class Configuration {
-        val providers = mutableListOf<SessionProvider>()
+        val providers = mutableListOf<SessionProvider<*>>()
 
-        fun register(provider: SessionProvider) {
+        fun register(provider: SessionProvider<*>) {
             // todo: check that type & name is unique
             providers.add(provider)
         }
@@ -51,7 +51,8 @@ class Sessions(val providers: List<SessionProvider>) {
                         data.value != null -> {
                             val value = data.value
                             value ?: throw IllegalStateException("Session data shouldn't be null in Modified state")
-                            val wrapped = data.provider.tracker.store(call, value)
+                            @Suppress("UNCHECKED_CAST")
+                            val wrapped = (data.provider.tracker as SessionTracker<Any>).store(call, value)
                             data.provider.transport.send(call, wrapped)
                         }
                         data.incoming && data.value == null -> {
@@ -93,8 +94,10 @@ private data class SessionData(val sessions: Sessions,
 
     override fun set(name: String, value: Any?) {
         val providerData = providerData[name] ?: throw IllegalStateException("Session data for `$name` was not registered")
-        if (value != null)
-            providerData.provider.tracker.validate(value)
+        if (value != null) {
+            @Suppress("UNCHECKED_CAST")
+            (providerData.provider.tracker as SessionTracker<Any>).validate(value)
+        }
         providerData.value = value
     }
 
@@ -109,7 +112,7 @@ private data class SessionData(val sessions: Sessions,
     }
 }
 
-private data class SessionProviderData(var value: Any?, val incoming: Boolean, val provider: SessionProvider)
+private data class SessionProviderData(var value: Any?, val incoming: Boolean, val provider: SessionProvider<*>)
 
 private val SessionKey = AttributeKey<SessionData>("SessionKey")
 
