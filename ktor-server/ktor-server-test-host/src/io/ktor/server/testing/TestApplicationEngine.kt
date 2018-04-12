@@ -68,7 +68,9 @@ class TestApplicationEngine(
             setup()
         }
 
-        pipeline.execute(call)
+        withContext(configuration.dispatcher) {
+            pipeline.execute(call)
+        }
 
         return call
     }
@@ -91,10 +93,12 @@ class TestApplicationEngine(
             call.response.websocketChannel()!!, Int.MAX_VALUE.toLong(), job, engineContext, pool
         )
 
-        call.callback(reader.incoming, writer.outgoing)
-        writer.flush()
-        writer.close()
-        job.cancelAndJoin()
+        withContext(configuration.dispatcher) {
+            call.callback(reader.incoming, writer.outgoing)
+            writer.flush()
+            writer.close()
+            job.cancelAndJoin()
+        }
         return call
     }
 
