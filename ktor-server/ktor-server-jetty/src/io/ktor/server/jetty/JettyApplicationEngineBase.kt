@@ -4,6 +4,7 @@ import io.ktor.application.*
 import io.ktor.server.engine.*
 import kotlinx.coroutines.experimental.*
 import org.eclipse.jetty.server.*
+import java.net.*
 import java.util.concurrent.*
 
 /**
@@ -44,7 +45,7 @@ open class JettyApplicationEngineBase(
         environment.start()
         server.start()
         return environment.connectors.zip(server.connectors).map {
-            EngineConnectionBinding(it.first, it.second.connectedEndPoints.first().localAddress)
+            EngineConnectionBinding(it.first, InetSocketAddress(it.first.host, (it.second as ServerConnector).localPort))
         }
     }
 
