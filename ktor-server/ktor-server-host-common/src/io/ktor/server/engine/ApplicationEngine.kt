@@ -46,6 +46,13 @@ interface ApplicationEngine {
     fun start(wait: Boolean = false): ApplicationEngine
 
     /**
+     * Starts this [ApplicationEngine], once ports are bound, returns the list of bindings.
+     *
+     * @return returns a list of bindings
+     */
+    suspend fun startAndGetBindings(): List<EngineConnectionBinding>
+
+    /**
      * Stops this [ApplicationEngine]
      *
      * @param gracePeriod the maximum amount of time in milliseconds to allow for activity to cool down

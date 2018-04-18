@@ -3,6 +3,7 @@ package io.ktor.server.tomcat
 import io.ktor.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.servlet.*
+import kotlinx.coroutines.experimental.*
 import org.apache.catalina.connector.*
 import org.apache.catalina.startup.Tomcat
 import org.apache.coyote.http2.*
@@ -10,6 +11,7 @@ import org.apache.tomcat.jni.*
 import org.apache.tomcat.util.net.*
 import org.apache.tomcat.util.net.jsse.*
 import org.apache.tomcat.util.net.openssl.*
+import java.net.*
 import java.nio.file.*
 import java.util.concurrent.*
 import javax.servlet.*
@@ -92,13 +94,20 @@ class TomcatApplicationEngine(environment: ApplicationEngineEnvironment, configu
     }
 
     override fun start(wait: Boolean): TomcatApplicationEngine {
-        environment.start()
-        server.start()
+        runBlocking {
+            startAndGetBindings()
+        }
         if (wait) {
             server.server.await()
             stop(1, 5, TimeUnit.SECONDS)
         }
         return this
+    }
+
+    override suspend fun startAndGetBindings(): List<EngineConnectionBinding> {
+        environment.start()
+        server.start()
+        return environment.connectors.map { EngineConnectionBinding(it, InetSocketAddress(it.host, server.connector.localPort)) }
     }
 
     override fun stop(gracePeriod: Long, timeout: Long, timeUnit: TimeUnit) {

@@ -14,7 +14,13 @@ class JettyApplicationEngine(environment: ApplicationEngineEnvironment, configur
 
     override fun start(wait: Boolean) : JettyApplicationEngine {
         server.handler = JettyKtorHandler(environment, this::pipeline, dispatcher)
-        super.start(wait)
+        runBlocking {
+            startAndGetBindings()
+        }
+        if (wait) {
+            server.join()
+            stop(1, 5, TimeUnit.SECONDS)
+        }
         return this
     }
 

@@ -31,7 +31,6 @@ class ApplicationEngineEnvironmentReloading(
         private val modules: List<Application.() -> Unit>,
         private val watchPaths: List<String> = emptyList()
 ) : ApplicationEngineEnvironment {
-
     private var _applicationInstance: Application? = null
     private var _applicationClassLoader: ClassLoader? = null
     private val applicationInstanceLock = ReentrantReadWriteLock()

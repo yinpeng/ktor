@@ -13,6 +13,7 @@ import io.ktor.websocket.*
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.channels.*
 import kotlinx.coroutines.experimental.io.*
+import java.net.*
 import java.util.concurrent.*
 import kotlin.coroutines.experimental.*
 
@@ -34,8 +35,15 @@ class TestApplicationEngine(
     }
 
     override fun start(wait: Boolean): ApplicationEngine {
-        environment.start()
+        runBlocking {
+            startAndGetBindings()
+        }
         return this
+    }
+
+    override suspend fun startAndGetBindings(): List<EngineConnectionBinding> {
+        environment.start()
+        return environment.connectors.map { EngineConnectionBinding(it, InetSocketAddress(it.host, it.port)) }
     }
 
     override fun stop(gracePeriod: Long, timeout: Long, timeUnit: TimeUnit) {

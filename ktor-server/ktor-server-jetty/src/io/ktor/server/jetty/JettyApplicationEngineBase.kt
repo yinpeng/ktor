@@ -2,6 +2,7 @@ package io.ktor.server.jetty
 
 import io.ktor.application.*
 import io.ktor.server.engine.*
+import kotlinx.coroutines.experimental.*
 import org.eclipse.jetty.server.*
 import java.util.concurrent.*
 
@@ -29,13 +30,22 @@ open class JettyApplicationEngineBase(
     }
 
     override fun start(wait: Boolean): JettyApplicationEngineBase {
-        environment.start()
-        server.start()
+        runBlocking {
+            startAndGetBindings()
+        }
         if (wait) {
             server.join()
             stop(1, 5, TimeUnit.SECONDS)
         }
         return this
+    }
+
+    override suspend fun startAndGetBindings(): List<EngineConnectionBinding> {
+        environment.start()
+        server.start()
+        return environment.connectors.zip(server.connectors).map {
+            EngineConnectionBinding(it.first, it.second.connectedEndPoints.first().localAddress)
+        }
     }
 
     override fun stop(gracePeriod: Long, timeout: Long, timeUnit: TimeUnit) {

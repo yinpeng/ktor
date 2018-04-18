@@ -28,6 +28,8 @@ class CIOApplicationEngine(environment: ApplicationEngineEnvironment, configure:
 
     private val stopRequest = CompletableDeferred<Unit>()
 
+    private val bindings = CompletableDeferred<List<EngineConnectionBinding>>()
+
     private val serverJob = launch(ioCoroutineDispatcher, start = CoroutineStart.LAZY) {
         // starting
         withContext(userDispatcher) {
@@ -49,6 +51,11 @@ class CIOApplicationEngine(environment: ApplicationEngineEnvironment, configure:
             throw t
         }
 
+        bindings.complete(environment.connectors.zip(connectors)
+            .map {
+                EngineConnectionBinding(it.first, it.second.serverSocket.await().localAddress)
+            })
+
         stopRequest.await()
 
         // stopping
@@ -60,6 +67,20 @@ class CIOApplicationEngine(environment: ApplicationEngineEnvironment, configure:
     }
 
     override fun start(wait: Boolean): ApplicationEngine {
+        runBlocking {
+            startAndGetBindings()
+        }
+
+        if (wait) {
+            runBlocking {
+                serverJob.join()
+            }
+        }
+
+        return this
+    }
+
+    override suspend fun startAndGetBindings(): List<EngineConnectionBinding> {
         serverJob.start()
         serverJob.invokeOnCompletion {
             try {
@@ -70,13 +91,7 @@ class CIOApplicationEngine(environment: ApplicationEngineEnvironment, configure:
             }
         }
 
-        if (wait) {
-            runBlocking {
-                serverJob.join()
-            }
-        }
-
-        return this
+        return bindings.await()
     }
 
     override fun stop(gracePeriod: Long, timeout: Long, timeUnit: TimeUnit) {

@@ -49,4 +49,3 @@ fun <TEngine : ApplicationEngine, TConfiguration : ApplicationEngine.Configurati
                        configure: TConfiguration.() -> Unit = {}): TEngine {
     return factory.create(environment, configure)
 }
-

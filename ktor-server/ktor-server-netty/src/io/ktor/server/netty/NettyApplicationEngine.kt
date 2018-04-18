@@ -82,16 +82,25 @@ class NettyApplicationEngine(environment: ApplicationEngineEnvironment, configur
     }
 
     override fun start(wait: Boolean): NettyApplicationEngine {
-        environment.start()
-        channels = bootstraps.zip(environment.connectors)
-                .map { it.first.bind(it.second.host, it.second.port) }
-                .map { it.sync().channel() }
+        runBlocking {
+            startAndGetBindings()
+        }
 
         if (wait) {
             channels?.map { it.closeFuture() }?.forEach { it.sync() }
             stop(1, 5, TimeUnit.SECONDS)
         }
         return this
+    }
+
+    override suspend fun startAndGetBindings(): List<EngineConnectionBinding> {
+        environment.start()
+        channels = bootstraps.zip(environment.connectors)
+            .map { it.first.bind(it.second.host, it.second.port) }
+            .map { it.sync().channel() }
+
+        return environment.connectors.zip(channels!!)
+            .map { EngineConnectionBinding(it.first, it.second.localAddress()) }
     }
 
     override fun stop(gracePeriod: Long, timeout: Long, timeUnit: TimeUnit) {

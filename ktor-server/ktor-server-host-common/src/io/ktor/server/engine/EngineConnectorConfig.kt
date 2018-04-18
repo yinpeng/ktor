@@ -1,6 +1,7 @@
 package io.ktor.server.engine
 
 import java.io.*
+import java.net.*
 import java.security.*
 
 /**
@@ -42,6 +43,13 @@ interface EngineConnectorConfig {
      * The port this application should be bound to.
      */
     val port: Int
+}
+
+class EngineConnectionBinding(
+    val config: EngineConnectorConfig,
+    val localAddress: SocketAddress
+) {
+    val port: Int get() = (localAddress as InetSocketAddress).port
 }
 
 /**
