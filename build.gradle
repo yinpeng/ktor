@@ -98,11 +98,6 @@ allprojects {
             outputFormat = 'javadoc'
             outputDirectory = "$buildDir/javadoc"
         }
-
-        task dokkaWebsite(type: org.jetbrains.dokka.gradle.DokkaTask) {
-            outputFormat = 'kotlin-website'
-            outputDirectory = "${rootProject.projectDir}/apidoc"
-        }
     }
 
     task jarTest(type: Jar, dependsOn: testClasses) {
@@ -253,6 +248,21 @@ release {
     git {
         requireBranch = 'gradle-build'
     }
+}
+
+def allCompileKotlinTasks = subprojects
+        .findAll {
+            !it.path.contains("ktor-samples")
+        }
+        .collect { it.compileKotlin }
+
+task dokkaWebsite(type: org.jetbrains.dokka.gradle.DokkaTask) {
+    kotlinTasks {
+        allCompileKotlinTasks
+    }
+    //outputFormat = 'kotlin-website'
+    outputFormat = 'html'
+    outputDirectory = "${rootProject.projectDir}/apidoc"
 }
 
 afterReleaseBuild.dependsOn bintrayUpload
