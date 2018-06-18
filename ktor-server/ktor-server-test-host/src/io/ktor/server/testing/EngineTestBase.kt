@@ -1,9 +1,11 @@
 package io.ktor.server.testing
 
+import com.googlecode.junittoolbox.*
 import io.ktor.application.*
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.*
+import io.ktor.client.engine.apache.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.engine.jetty.*
 import io.ktor.client.request.*
@@ -13,46 +15,45 @@ import io.ktor.network.tls.certificates.*
 import io.ktor.routing.*
 import io.ktor.server.engine.*
 import io.ktor.util.*
+import io.ktor.server.tomcat.*
 import kotlinx.coroutines.experimental.*
 import org.junit.*
 import org.junit.rules.*
+import org.junit.runner.*
+import org.junit.runners.*
 import org.junit.runners.model.*
 import org.slf4j.*
+import org.slf4j.Logger
 import java.io.*
 import java.net.*
 import java.security.*
 import java.util.concurrent.*
+import java.util.logging.*
 import javax.net.ssl.*
 import kotlin.test.*
 
-
-abstract class EngineTestBase<TEngine : ApplicationEngine, TConfiguration : ApplicationEngine.Configuration>(
-    val applicationEngineFactory: ApplicationEngineFactory<TEngine, TConfiguration>
+@RunWith(ParallelParameterized::class)
+abstract class EngineTestBase<TConfiguration : ApplicationEngine.Configuration>(
+    val factoryWithConfig: EngineFactoryWithConfig<ApplicationEngine, TConfiguration>,
+    clientEngineFactory: HttpClientEngineFactory<HttpClientEngineConfig>,
+    val mode: TestMode
 ) {
+    class PublishedTimeout(val seconds: Long) : Timeout(seconds, TimeUnit.SECONDS)
+
     protected val isUnderDebugger: Boolean =
         java.lang.management.ManagementFactory.getRuntimeMXBean().inputArguments.orEmpty()
             .any { "-agentlib:jdwp" in it }
 
     protected var port = findFreePort()
     protected var sslPort = findFreePort()
-    protected var server: TEngine? = null
+    protected var server: ApplicationEngine? = null
     protected var callGroupSize = -1
         private set
     protected val exceptions = ArrayList<Throwable>()
-    protected var enableHttp2: Boolean = System.getProperty("enable.http2") == "true"
-    protected var enableSsl: Boolean = System.getProperty("enable.ssl") != "false"
 
     private val allConnections = CopyOnWriteArrayList<HttpURLConnection>()
 
     val testLog: Logger = LoggerFactory.getLogger("EngineTestBase")
-
-    @Target(AnnotationTarget.FUNCTION)
-    @Retention
-    protected annotation class Http2Only
-
-    @Target(AnnotationTarget.FUNCTION)
-    @Retention
-    protected annotation class NoHttp2
 
     @get:Rule
     val test = TestName()
@@ -64,21 +65,10 @@ abstract class EngineTestBase<TEngine : ApplicationEngine, TConfiguration : Appl
 
     protected val socketReadTimeout by lazy { timeout.seconds.toInt() * 1000 }
 
+    protected val client = HttpClient(clientEngineFactory)
+
     @Before
     fun setUpBase() {
-        val method = this.javaClass.getMethod(test.methodName) ?: fail("Method ${test.methodName} not found")
-
-        if (method.isAnnotationPresent(Http2Only::class.java)) {
-            Assume.assumeTrue("http2 is not enabled", enableHttp2)
-        }
-        if (method.isAnnotationPresent(NoHttp2::class.java)) {
-            enableHttp2 = false
-        }
-
-        if (enableHttp2) {
-            Class.forName("sun.security.ssl.ALPNExtension", true, null)
-        }
-
         testLog.trace("Starting server on port $port (SSL $sslPort)")
         exceptions.clear()
     }
@@ -87,31 +77,31 @@ abstract class EngineTestBase<TEngine : ApplicationEngine, TConfiguration : Appl
     fun tearDownBase() {
         allConnections.forEach { it.disconnect() }
         testLog.trace("Disposing server on port $port (SSL $sslPort)")
-        (server as? ApplicationEngine)?.stop(1000, 5000, TimeUnit.MILLISECONDS)
+        server?.stop(1000, 5000, TimeUnit.MILLISECONDS)
         if (exceptions.isNotEmpty()) {
             fail("Server exceptions logged, consult log output for more information")
         }
     }
 
-    protected open fun createServer(log: Logger?, module: Application.() -> Unit): TEngine {
+    protected open fun createServer(log: Logger?, module: Application.() -> Unit): ApplicationEngine {
         val _port = this.port
         val environment = applicationEngineEnvironment {
             val delegate = LoggerFactory.getLogger("ktor.test")
             this.log = log ?: object : Logger by delegate {
-                override fun error(msg: String?, t: Throwable?) {
-                    t?.let {
+                override fun error(message: String?, cause: Throwable?) {
+                    cause?.let {
                         exceptions.add(it)
                         println("Critical test exception: $it")
                         it.printStackTrace()
                         println("From origin:")
                         Exception().printStackTrace()
                     }
-                    delegate.error(msg, t)
+                    delegate.error(message, cause)
                 }
             }
 
             connector { port = _port }
-            if (enableSsl) {
+            if (mode != TestMode.HTTP) {
                 sslConnector(keyStore, "mykey", { "changeit".toCharArray() }, { "changeit".toCharArray() }) {
                     this.port = sslPort
                     this.keyStorePath = keyStoreFile.absoluteFile
@@ -121,14 +111,10 @@ abstract class EngineTestBase<TEngine : ApplicationEngine, TConfiguration : Appl
             module(module)
         }
 
-        return embeddedServer(applicationEngineFactory, environment) {
-            configure(this)
+        return embeddedServer(factoryWithConfig.factory, environment) {
             this@EngineTestBase.callGroupSize = callGroupSize
+            factoryWithConfig.configuration(this)
         }
-    }
-
-    protected open fun configure(configuration: TConfiguration) {
-        // Empty, intended to be override in derived types when necessary
     }
 
     protected open fun features(application: Application, routingConfigurer: Routing.() -> Unit) {
@@ -136,7 +122,7 @@ abstract class EngineTestBase<TEngine : ApplicationEngine, TConfiguration : Appl
         application.install(Routing, routingConfigurer)
     }
 
-    protected fun createAndStartServer(log: Logger? = null, routingConfigurer: Routing.() -> Unit): TEngine {
+    protected fun createAndStartServer(log: Logger? = null, routingConfigurer: Routing.() -> Unit): ApplicationEngine {
         var lastFailures = emptyList<Throwable>()
         for (attempt in 1..5) {
             val server = createServer(log) {
@@ -162,7 +148,7 @@ abstract class EngineTestBase<TEngine : ApplicationEngine, TConfiguration : Appl
         throw MultipleFailureException(lastFailures)
     }
 
-    private fun startServer(server: TEngine): List<Throwable> {
+    private fun startServer(server: ApplicationEngine): List<Throwable> {
         this.server = server
 
         val l = CountDownLatch(1)
@@ -195,18 +181,12 @@ abstract class EngineTestBase<TEngine : ApplicationEngine, TConfiguration : Appl
     }
 
     protected fun findFreePort() = ServerSocket(0).use { it.localPort }
+
     protected fun withUrl(
         path: String, builder: HttpRequestBuilder.() -> Unit = {}, block: suspend HttpResponse.(Int) -> Unit
-    ) {
-        withUrl(URL("http://127.0.0.1:$port$path"), port, builder, block)
-
-        if (enableSsl) {
-            withUrl(URL("https://127.0.0.1:$sslPort$path"), sslPort, builder, block)
-        }
-
-        if (enableHttp2 && enableSsl) {
-            withHttp2(URL("https://127.0.0.1:$sslPort$path"), sslPort, builder, block)
-        }
+    ): Unit = when (mode) {
+        TestMode.HTTP -> withUrl(URL("http://127.0.0.1:$port$path"), port, builder, block)
+        else -> withUrl(URL("https://127.0.0.1:$sslPort$path"), sslPort, builder, block)
     }
 
     protected fun socket(block: Socket.() -> Unit) {
@@ -223,32 +203,11 @@ abstract class EngineTestBase<TEngine : ApplicationEngine, TConfiguration : Appl
         block: suspend HttpResponse.(Int) -> Unit
     ) = runBlocking {
         withTimeout(timeout.seconds, TimeUnit.SECONDS) {
-            HttpClient(CIO.config {
-                https.also {
-                    it.trustManager = trustManager
-                }
-            }).use { client ->
-                client.call(url, builder).response.use { response ->
-                    block(response, port)
-                }
+            client.call(url, builder).response.use { response ->
+                block(response, port)
             }
         }
     }
-
-    private fun withHttp2(
-        url: URL, port: Int,
-        builder: HttpRequestBuilder.() -> Unit, block: suspend HttpResponse.(Int) -> Unit
-    ): Unit = runBlocking {
-        withTimeout(timeout.seconds, TimeUnit.SECONDS) {
-            HttpClient(Jetty).use { httpClient ->
-                httpClient.call(url, builder).response.use { response ->
-                    block(response, port)
-                }
-            }
-        }
-    }
-
-    class PublishedTimeout(val seconds: Long) : Timeout(seconds, TimeUnit.SECONDS)
 
     companion object {
         val keyStoreFile = File("build/temp.jks")
@@ -266,6 +225,42 @@ abstract class EngineTestBase<TEngine : ApplicationEngine, TConfiguration : Appl
             sslContext.init(null, tmf.trustManagers, null)
             trustManager = tmf.trustManagers.first { it is X509TrustManager } as X509TrustManager
         }
+
+        val JettyServer = testServer(io.ktor.server.jetty.Jetty)
+        val NettyServer = testServer(io.ktor.server.netty.Netty) {
+            shareWorkGroup = true
+        }
+
+        val CIOServer = testServer(io.ktor.server.cio.CIO)
+        val TomcatServer = testServer(Tomcat) {
+            listOf("org.apache.coyote", "org.apache.tomcat", "org.apache.catalina").map {
+                java.util.logging.Logger.getLogger(it).apply { level = Level.WARNING }
+            }
+        }
+
+        val JettyAsyncServletServer = testServer(JettyTestServlet(async = true))
+        val JettyBlockingServletServer = testServer(JettyTestServlet(async = false))
+
+        val ApacheClient = Apache.config { sslContext = Companion.sslContext }
+        val CIOClient = CIO.config { https.trustManager = trustManager }
+        val JettyClient = Jetty
+
+        @Parameterized.Parameters(name = "server:{0}, client:{1}, mode:{2}")
+        @JvmStatic
+        fun parameters() =
+            combine(
+                listOf(NettyServer, JettyServer, TomcatServer, JettyAsyncServletServer, JettyBlockingServletServer),
+                listOf(ApacheClient, CIOClient),
+                listOf(TestMode.HTTP, TestMode.HTTPS)
+            ) + combine(
+                listOf(CIOServer),
+                listOf(CIOClient, ApacheClient),
+                listOf(TestMode.HTTP)
+            ) + combine(
+                listOf(NettyServer, JettyServer, JettyAsyncServletServer, JettyBlockingServletServer),
+                listOf(JettyClient),
+                listOf(TestMode.HTTP2)
+            )
 
         private suspend fun CoroutineScope.waitForPort(port: Int) {
             do {

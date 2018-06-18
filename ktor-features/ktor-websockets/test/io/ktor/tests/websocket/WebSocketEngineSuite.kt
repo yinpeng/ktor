@@ -1,6 +1,7 @@
 package io.ktor.tests.websocket
 
 import io.ktor.application.*
+import io.ktor.client.engine.*
 import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.http.cio.websocket.CloseReason
@@ -13,6 +14,7 @@ import io.ktor.util.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.experimental.channels.*
 import org.junit.*
+import org.junit.Assume.*
 import org.junit.Test
 import org.junit.rules.*
 import java.io.*
@@ -23,7 +25,17 @@ import java.util.*
 import java.util.concurrent.*
 import kotlin.test.*
 
-abstract class WebSocketEngineSuite<TEngine : ApplicationEngine, TConfiguration : ApplicationEngine.Configuration>(hostFactory: ApplicationEngineFactory<TEngine, TConfiguration>) : EngineTestBase<TEngine, TConfiguration>(hostFactory) {
+class WebSocketEngineSuite<TConfiguration : ApplicationEngine.Configuration>(
+    hostFactory: EngineFactoryWithConfig<ApplicationEngine, TConfiguration>,
+    clientFactory: HttpClientEngineFactory<HttpClientEngineConfig>,
+    mode: TestMode
+) : EngineTestBase<TConfiguration>(hostFactory, clientFactory, mode) {
+
+    init {
+        assumeTrue(clientFactory == CIOClient)
+        assumeTrue(hostFactory in listOf<EngineFactoryWithConfig<*, *>>(JettyServer, NettyServer, TomcatServer))
+    }
+
     @get:Rule
     val errors = ErrorCollector()
 

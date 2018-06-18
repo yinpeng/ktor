@@ -3,6 +3,7 @@ package io.ktor.server.testing
 import io.ktor.application.*
 import io.ktor.util.cio.*
 import io.ktor.client.call.*
+import io.ktor.client.engine.*
 import io.ktor.client.request.*
 import io.ktor.client.response.*
 import io.ktor.http.content.*
@@ -19,6 +20,8 @@ import kotlinx.coroutines.experimental.io.*
 import kotlinx.coroutines.experimental.io.jvm.javaio.*
 import kotlinx.io.core.*
 import kotlinx.io.streams.*
+import org.junit.*
+import org.junit.Ignore
 import org.junit.Test
 import org.junit.runners.model.*
 import org.slf4j.*
@@ -34,9 +37,12 @@ import kotlin.concurrent.*
 import kotlin.coroutines.experimental.*
 import kotlin.test.*
 
-abstract class EngineTestSuite<TEngine : ApplicationEngine, TConfiguration : ApplicationEngine.Configuration>(
-        hostFactory: ApplicationEngineFactory<TEngine, TConfiguration>
-) : EngineTestBase<TEngine, TConfiguration>(hostFactory) {
+class EngineTestSuite<TConfiguration : ApplicationEngine.Configuration>(
+    hostFactory: EngineFactoryWithConfig<ApplicationEngine, TConfiguration>,
+    clientFactory: HttpClientEngineFactory<HttpClientEngineConfig>,
+    mode: TestMode
+) : EngineTestBase<TConfiguration>(hostFactory, clientFactory, mode) {
+
     @Test
     fun testTextContent() {
         createAndStartServer {
@@ -66,8 +72,9 @@ abstract class EngineTestSuite<TEngine : ApplicationEngine, TConfiguration : App
     }
 
     @Test
-    @Http2Only
     fun testServerPush() {
+        Assume.assumeTrue(mode == TestMode.HTTP2)
+
         createAndStartServer {
             get("/child") {
                 call.respondText("child")
@@ -347,7 +354,8 @@ abstract class EngineTestSuite<TEngine : ApplicationEngine, TConfiguration : App
 
     @Test
     fun testLocalFileContent() {
-        val file = listOf(File("src"), File("ktor-server/ktor-server-core/src")).first { it.exists() }.walkBottomUp().filter { it.extension == "kt" }.first()
+        val file = listOf(File("src"), File("ktor-server/ktor-server-core/src")).first { it.exists() }.walkBottomUp()
+            .filter { it.extension == "kt" }.first()
         testLog.trace("test file is $file")
 
         createAndStartServer {
@@ -364,7 +372,8 @@ abstract class EngineTestSuite<TEngine : ApplicationEngine, TConfiguration : App
 
     @Test
     fun testLocalFileContentWithCompression() {
-        val file = listOf(File("src"), File("ktor-server/ktor-server-core/src")).first { it.exists() }.walkBottomUp().filter { it.extension == "kt" }.first()
+        val file = listOf(File("src"), File("ktor-server/ktor-server-core/src")).first { it.exists() }.walkBottomUp()
+            .filter { it.extension == "kt" }.first()
         testLog.trace("test file is $file")
 
         createAndStartServer {
@@ -410,7 +419,8 @@ abstract class EngineTestSuite<TEngine : ApplicationEngine, TConfiguration : App
 
     @Test
     fun testLocalFileContentRange() {
-        val file = listOf(File("src"), File("ktor-server/ktor-server-core/src")).first { it.exists() }.walkBottomUp().filter { it.extension == "kt" && it.reader().use { it.read().toChar() == 'p' } }.first()
+        val file = listOf(File("src"), File("ktor-server/ktor-server-core/src")).first { it.exists() }.walkBottomUp()
+            .filter { it.extension == "kt" && it.reader().use { it.read().toChar() == 'p' } }.first()
         testLog.trace("test file is $file")
 
         createAndStartServer {
@@ -436,7 +446,8 @@ abstract class EngineTestSuite<TEngine : ApplicationEngine, TConfiguration : App
 
     @Test
     fun testLocalFileContentRangeWithCompression() {
-        val file = listOf(File("src"), File("ktor-server/ktor-server-core/src")).first { it.exists() }.walkBottomUp().filter { it.extension == "kt" && it.reader().use { it.read().toChar() == 'p' } }.first()
+        val file = listOf(File("src"), File("ktor-server/ktor-server-core/src")).first { it.exists() }.walkBottomUp()
+            .filter { it.extension == "kt" && it.reader().use { it.read().toChar() == 'p' } }.first()
         testLog.trace("test file is $file")
 
         createAndStartServer {
@@ -504,7 +515,8 @@ abstract class EngineTestSuite<TEngine : ApplicationEngine, TConfiguration : App
     @Test
     fun testURIContentLocalFile() {
         val buildDir = "ktor-server/ktor-server-core/build/classes/kotlin/main"
-        val file = listOf(File("build/classes/kotlin/main"), File(buildDir)).first { it.exists() }.walkBottomUp().filter { it.extension == "class" }.first()
+        val file = listOf(File("build/classes/kotlin/main"), File(buildDir)).first { it.exists() }.walkBottomUp()
+            .filter { it.extension == "class" }.first()
         testLog.trace("test file is $file")
 
         createAndStartServer {
@@ -613,8 +625,9 @@ abstract class EngineTestSuite<TEngine : ApplicationEngine, TConfiguration : App
     }
 
     @Test
-    @NoHttp2
     fun testMultipartFileUpload() {
+        Assume.assumeFalse(mode == TestMode.HTTP2)
+
         createAndStartServer {
             post("/") {
                 val response = StringBuilder()
@@ -635,8 +648,8 @@ abstract class EngineTestSuite<TEngine : ApplicationEngine, TConfiguration : App
         withUrl("/", {
             method = HttpMethod.Post
             val contentType = ContentType.MultiPart.FormData
-                    .withParameter("boundary", "***bbb***")
-                    .withCharset(Charsets.ISO_8859_1)
+                .withParameter("boundary", "***bbb***")
+                .withCharset(Charsets.ISO_8859_1)
 
             body = WriterContent({
                 append("--***bbb***\r\n")
@@ -653,13 +666,17 @@ abstract class EngineTestSuite<TEngine : ApplicationEngine, TConfiguration : App
             }, contentType)
         }) {
             assertEquals(200, status.value)
-            assertEquals("a story=Hi user. The snake you gave me for free ate all the birds. Please take it back ASAP.\nfile:attachment,original.txt,File content goes here\n", readText())
+            assertEquals(
+                "a story=Hi user. The snake you gave me for free ate all the birds. Please take it back ASAP.\nfile:attachment,original.txt,File content goes here\n",
+                readText()
+            )
         }
     }
 
     @Test
-    @NoHttp2
     fun testMultipartFileUploadLarge() {
+        Assume.assumeFalse(mode == TestMode.HTTP2)
+
         val numberOfLines = 10000
 
         createAndStartServer {
@@ -682,8 +699,8 @@ abstract class EngineTestSuite<TEngine : ApplicationEngine, TConfiguration : App
         withUrl("/", {
             method = HttpMethod.Post
             val contentType = ContentType.MultiPart.FormData
-                    .withParameter("boundary", "***bbb***")
-                    .withCharset(Charsets.ISO_8859_1)
+                .withParameter("boundary", "***bbb***")
+                .withCharset(Charsets.ISO_8859_1)
 
             body = WriterContent({
                 append("--***bbb***\r\n")
@@ -704,7 +721,10 @@ abstract class EngineTestSuite<TEngine : ApplicationEngine, TConfiguration : App
             }, contentType)
         }) {
             assertEquals(200, status.value)
-            assertEquals("a story=Hi user. The snake you gave me for free ate all the birds. Please take it back ASAP.\nfile:attachment,original.txt,$numberOfLines\n", readText())
+            assertEquals(
+                "a story=Hi user. The snake you gave me for free ate all the birds. Please take it back ASAP.\nfile:attachment,original.txt,$numberOfLines\n",
+                readText()
+            )
         }
     }
 
@@ -788,18 +808,24 @@ abstract class EngineTestSuite<TEngine : ApplicationEngine, TConfiguration : App
             }
 
             val responses = s.getInputStream().bufferedReader(Charsets.ISO_8859_1).lineSequence()
-                    .filterNot { it.startsWith("Date") || it.startsWith("Server") || it.startsWith("Content-") || it.toIntOrNull() != null || it.isBlank() || it.startsWith("Connection") }
-                    .map { it.trim() }
-                    .joinToString(separator = "\n").replace("200 OK", "200")
+                .filterNot {
+                    it.startsWith("Date") || it.startsWith("Server") || it.startsWith("Content-") || it.toIntOrNull() != null || it.isBlank() || it.startsWith(
+                        "Connection"
+                    )
+                }
+                .map { it.trim() }
+                .joinToString(separator = "\n").replace("200 OK", "200")
 
-            assertEquals("""
+            assertEquals(
+                """
                 HTTP/1.1 200
                 D: 2
                 Response for 2
                 HTTP/1.1 200
                 D: 1
                 Response for 1
-                """.trimIndent().replace("\r\n", "\n"), responses)
+                """.trimIndent().replace("\r\n", "\n"), responses
+            )
         }
     }
 
@@ -1084,11 +1110,7 @@ abstract class EngineTestSuite<TEngine : ApplicationEngine, TConfiguration : App
             throw MultipleFailureException(errors)
         }
 
-        var multiplier = 1
-        if (enableHttp2) multiplier++
-        if (enableSsl) multiplier++
-
-        assertEquals(count * multiplier, completed.get())
+        assertEquals(count, completed.get())
     }
 
     @Test
@@ -1224,7 +1246,7 @@ abstract class EngineTestSuite<TEngine : ApplicationEngine, TConfiguration : App
     }
 
     @Test
-    open fun testBlockingDeadlock() {
+    fun testBlockingDeadlock() {
         createAndStartServer {
             get("/") {
                 call.respondWrite(ContentType.Text.Plain.withCharset(Charsets.ISO_8859_1)) {
@@ -1290,7 +1312,9 @@ abstract class EngineTestSuite<TEngine : ApplicationEngine, TConfiguration : App
     }
 
     @Test
-    open fun testUpgrade() {
+    fun testUpgrade() {
+        Assume.assumeFalse(server == TomcatServer || server == JettyBlockingServletServer)
+
         createAndStartServer {
             get("/up") {
                 call.respond(object : OutgoingContent.ProtocolUpgrade() {
@@ -1300,7 +1324,12 @@ abstract class EngineTestSuite<TEngine : ApplicationEngine, TConfiguration : App
                             append(HttpHeaders.Connection, "Upgrade")
                         }
 
-                    override suspend fun upgrade(input: ByteReadChannel, output: ByteWriteChannel, engineContext: CoroutineContext, userContext: CoroutineContext): Job {
+                    override suspend fun upgrade(
+                        input: ByteReadChannel,
+                        output: ByteWriteChannel,
+                        engineContext: CoroutineContext,
+                        userContext: CoroutineContext
+                    ): Job {
                         return launch(engineContext) {
                             val bb = ByteBuffer.allocate(8)
                             input.readFully(bb)
@@ -1360,10 +1389,10 @@ abstract class EngineTestSuite<TEngine : ApplicationEngine, TConfiguration : App
                 assertEquals("up", response.headers[HttpHeaders.Upgrade]?.toString())
 
                 (0 until response.headers.size)
-                        .map { response.headers.nameAt(it).toString() }
-                        .groupBy { it }.forEach { (name, values) ->
-                    assertEquals(1, values.size, "Duplicate header $name")
-                }
+                    .map { response.headers.nameAt(it).toString() }
+                    .groupBy { it }.forEach { (name, values) ->
+                        assertEquals(1, values.size, "Duplicate header $name")
+                    }
 
                 outputStream.apply {
                     writePacket {
@@ -1380,8 +1409,9 @@ abstract class EngineTestSuite<TEngine : ApplicationEngine, TConfiguration : App
     }
 
     @Test
-    @NoHttp2
-    open fun testChunked() {
+    fun testChunked() {
+        Assume.assumeFalse(mode == TestMode.HTTP2)
+
         val data = ByteArray(16 * 1024, { it.toByte() })
         val size = data.size.toLong()
 
@@ -1465,9 +1495,10 @@ abstract class EngineTestSuite<TEngine : ApplicationEngine, TConfiguration : App
     }
 
     @Test
-    @NoHttp2
     @Ignore
-    open fun testChunkedWrongLength() {
+    fun testChunkedWrongLength() {
+        Assume.assumeFalse(mode == TestMode.HTTP2)
+
         val data = ByteArray(16 * 1024, { it.toByte() })
         val doubleSize = (data.size * 2).toString()
         val halfSize = (data.size / 2).toString()
@@ -1576,6 +1607,6 @@ abstract class EngineTestSuite<TEngine : ApplicationEngine, TConfiguration : App
 
     companion object {
         val classesDir = "build/classes/kotlin/main"
-        val coreClassesDir = "ktor-server/ktor-server-core/${classesDir}"
+        val coreClassesDir = "ktor-server/ktor-server-core/$classesDir"
     }
 }
