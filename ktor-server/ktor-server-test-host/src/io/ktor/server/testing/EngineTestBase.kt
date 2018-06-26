@@ -34,7 +34,7 @@ import kotlin.test.*
 
 @RunWith(ParallelParameterized::class)
 abstract class EngineTestBase<TConfiguration : ApplicationEngine.Configuration>(
-    val factoryWithConfig: EngineFactoryWithConfig<ApplicationEngine, TConfiguration>,
+    val hostFactory: EngineFactoryWithConfig<ApplicationEngine, TConfiguration>,
     clientEngineFactory: HttpClientEngineFactory<HttpClientEngineConfig>,
     val mode: TestMode
 ) {
@@ -111,9 +111,9 @@ abstract class EngineTestBase<TConfiguration : ApplicationEngine.Configuration>(
             module(module)
         }
 
-        return embeddedServer(factoryWithConfig.factory, environment) {
+        return embeddedServer(hostFactory.factory, environment) {
             this@EngineTestBase.callGroupSize = callGroupSize
-            factoryWithConfig.configuration(this)
+            hostFactory.configuration(this)
         }
     }
 
