@@ -10,6 +10,7 @@ import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.channels.*
 import kotlinx.coroutines.experimental.io.*
 import org.apache.http.*
+import org.apache.http.HttpHeaders
 import org.apache.http.HttpRequest
 import org.apache.http.client.config.*
 import org.apache.http.client.methods.*
@@ -18,6 +19,7 @@ import org.apache.http.entity.*
 import org.apache.http.nio.*
 import org.apache.http.nio.protocol.*
 import org.apache.http.protocol.*
+import java.net.*
 import java.nio.ByteBuffer
 
 internal class ApacheRequestProducer(
