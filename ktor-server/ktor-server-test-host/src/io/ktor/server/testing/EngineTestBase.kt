@@ -5,12 +5,14 @@ import io.ktor.application.*
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.*
+import io.ktor.client.engine.android.*
 import io.ktor.client.engine.apache.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.engine.jetty.*
 import io.ktor.client.request.*
 import io.ktor.client.response.*
 import io.ktor.features.*
+import io.ktor.http.*
 import io.ktor.network.tls.certificates.*
 import io.ktor.routing.*
 import io.ktor.server.engine.*
@@ -185,8 +187,8 @@ abstract class EngineTestBase<TConfiguration : ApplicationEngine.Configuration>(
     protected fun withUrl(
         path: String, builder: HttpRequestBuilder.() -> Unit = {}, block: suspend HttpResponse.(Int) -> Unit
     ): Unit = when (mode) {
-        TestMode.HTTP -> withUrl(URL("http://127.0.0.1:$port$path"), port, builder, block)
-        else -> withUrl(URL("https://127.0.0.1:$sslPort$path"), sslPort, builder, block)
+        TestMode.HTTP -> withUrl("http://127.0.0.1:$port$path", port, builder, block)
+        else -> withUrl("https://127.0.0.1:$sslPort$path", sslPort, builder, block)
     }
 
     protected fun socket(block: Socket.() -> Unit) {
@@ -199,7 +201,7 @@ abstract class EngineTestBase<TConfiguration : ApplicationEngine.Configuration>(
     }
 
     private fun withUrl(
-        url: URL, port: Int, builder: HttpRequestBuilder.() -> Unit,
+        url: String, port: Int, builder: HttpRequestBuilder.() -> Unit,
         block: suspend HttpResponse.(Int) -> Unit
     ) = runBlocking {
         withTimeout(timeout.seconds, TimeUnit.SECONDS) {
@@ -242,6 +244,7 @@ abstract class EngineTestBase<TConfiguration : ApplicationEngine.Configuration>(
         val JettyBlockingServletServer = testServer(JettyTestServlet(async = false))
 
         val ApacheClient = Apache.config { sslContext = Companion.sslContext }
+        val AndroidClient = Android.config { sslContext = Companion.sslContext }
         val CIOClient = CIO.config { https.trustManager = trustManager }
         val JettyClient = Jetty
 
@@ -249,15 +252,15 @@ abstract class EngineTestBase<TConfiguration : ApplicationEngine.Configuration>(
         @JvmStatic
         fun parameters() =
             combine(
-                listOf(NettyServer, JettyServer, TomcatServer, JettyAsyncServletServer, JettyBlockingServletServer),
-                listOf(ApacheClient, CIOClient),
+                listOf(NettyServer, JettyServer, /*TomcatServer,*/ JettyAsyncServletServer, JettyBlockingServletServer),
+                listOf(AndroidClient, ApacheClient, CIOClient),
                 listOf(TestMode.HTTP, TestMode.HTTPS)
             ) + combine(
                 listOf(CIOServer),
-                listOf(CIOClient, ApacheClient),
+                listOf(AndroidClient, CIOClient, ApacheClient),
                 listOf(TestMode.HTTP)
             ) + combine(
-                listOf(NettyServer, JettyServer, JettyAsyncServletServer, JettyBlockingServletServer),
+                listOf(/*NettyServer,*/JettyServer, JettyAsyncServletServer, JettyBlockingServletServer),
                 listOf(JettyClient),
                 listOf(TestMode.HTTP2)
             )

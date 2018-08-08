@@ -4,11 +4,14 @@ dependencies {
     compile project(':ktor-server:ktor-server-cio')
     compile project(':ktor-server:ktor-server-tomcat')
     compile project(':ktor-network:ktor-network-tls')
-    compile group: 'ch.qos.logback', name: 'logback-classic', version: logback_version
     compile project(':ktor-client:ktor-client-core:ktor-client-core-jvm')
     compile project(':ktor-client:ktor-client-jetty')
     compile project(':ktor-client:ktor-client-cio')
+    compile project(':ktor-client:ktor-client-android')
     compile project(':ktor-client:ktor-client-tests')
+
+    compile group: 'ch.qos.logback', name: 'logback-classic', version: logback_version
+
     compile group: 'org.eclipse.jetty.http2', name: 'http2-client', version: jetty_version
     compile group: 'org.eclipse.jetty', name: 'jetty-client', version: jetty_version
     compile group: 'org.eclipse.jetty.http2', name: 'http2-http-client-transport', version: jetty_version
@@ -29,4 +32,6 @@ dependencies {
     compile project(':ktor-features:ktor-websockets')
 
     testCompile project(':ktor-server:ktor-server-core')
+
+    boot group: 'org.mortbay.jetty.alpn', name: 'alpn-boot', version: jetty_alpn_boot_version
 }

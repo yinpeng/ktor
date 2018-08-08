@@ -4,6 +4,7 @@ import io.ktor.client.call.*
 import io.ktor.client.engine.*
 import io.ktor.client.request.*
 import io.ktor.client.utils.*
+import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.util.*
 import kotlinx.coroutines.experimental.*
@@ -95,7 +96,7 @@ internal class ApacheRequestProducer(
             scheme = url.protocol.name
             host = url.host
             if (url.port != url.protocol.defaultPort) port = url.port
-            path = url.encodedPath
+            path = url.encodedPath.decodeURLPart()
 
             if (url.parameters.isEmpty() && url.trailingQuery) setParameters(listOf())
             url.parameters.flattenForEach { key, value -> addParameter(key, value) }

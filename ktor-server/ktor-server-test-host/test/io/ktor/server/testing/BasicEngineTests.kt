@@ -322,6 +322,7 @@ class BasicEngineTests<TConfiguration : ApplicationEngine.Configuration>(
     fun testStaticServeFromDir() {
         val targetClasses = listOf(File(classesDir), File(coreClassesDir)).first { it.exists() }
         val file = targetClasses.walkBottomUp().filter { it.extension == "class" }.first()
+
         testLog.trace("test file is $file")
 
         createAndStartServer {
@@ -330,7 +331,12 @@ class BasicEngineTests<TConfiguration : ApplicationEngine.Configuration>(
             }
         }
 
-        withUrl("/files/${file.toRelativeString(targetClasses).urlPath()}") {
+        val filePath = file
+            .toRelativeString(targetClasses)
+            .urlPath()
+            .encodeURLQueryComponent(encodeFull = true)
+
+        withUrl("/files/$filePath") {
             assertEquals(200, status.value)
 
             val bytes = readBytes(100)
@@ -343,7 +349,7 @@ class BasicEngineTests<TConfiguration : ApplicationEngine.Configuration>(
             assertEquals(0xbe, bytes[3].toInt() and 0xff)
         }
 
-        withUrl("/files/${file.toRelativeString(targetClasses).urlPath()}2") {
+        withUrl("/files/${filePath}2") {
             assertEquals(404, status.value)
         }
         withUrl("/wefwefwefw") {
@@ -393,13 +399,15 @@ class BasicEngineTests<TConfiguration : ApplicationEngine.Configuration>(
 
     @Test
     fun testStreamingContentWithCompression() {
-        val file = listOf(File("src"), File("ktor-server/ktor-server-core/src")).first { it.exists() }.walkBottomUp().filter { it.extension == "kt" }.first()
+        val file = listOf(File("src"), File("ktor-server/ktor-server-core/src"))
+            .first { it.exists() }.walkBottomUp()
+            .filter { it.extension == "kt" }.first()
         testLog.trace("test file is $file")
 
         createAndStartServer {
             application.install(Compression)
             handle {
-                call.respond(object: OutgoingContent.WriteChannelContent() {
+                call.respond(object : OutgoingContent.WriteChannelContent() {
                     override suspend fun writeTo(channel: ByteWriteChannel) {
                         channel.writeStringUtf8("Hello!")
                     }

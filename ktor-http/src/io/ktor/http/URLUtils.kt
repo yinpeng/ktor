@@ -38,6 +38,8 @@ fun URLBuilder.takeFrom(urlString: String): URLBuilder {
         }
     }
 
+    if (parts["parametersContainer"] == "?") trailingQuery = true
+
     return this
 }
 

@@ -1,6 +1,7 @@
 package io.ktor.client.engine.android
 
 import io.ktor.client.engine.*
+import javax.net.ssl.*
 
 
 class AndroidEngineConfig : HttpClientEngineConfig() {
@@ -16,4 +17,5 @@ class AndroidEngineConfig : HttpClientEngineConfig() {
      */
     var socketTimeout: Int = 100_000
 
+    var sslContext: SSLContext = SSLContext.getDefault()
 }

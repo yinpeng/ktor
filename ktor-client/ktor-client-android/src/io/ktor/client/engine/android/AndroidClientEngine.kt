@@ -12,8 +12,8 @@ import kotlinx.coroutines.experimental.io.*
 import kotlinx.coroutines.experimental.io.jvm.javaio.*
 import java.io.*
 import java.net.*
-import java.util.*
 import java.util.concurrent.*
+import javax.net.ssl.*
 
 open class AndroidClientEngine(override val config: AndroidEngineConfig) : HttpClientEngine {
     override val dispatcher: CoroutineDispatcher by lazy {
@@ -40,6 +40,10 @@ open class AndroidClientEngine(override val config: AndroidEngineConfig) : HttpC
         val context = Job()
 
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            if (this is HttpsURLConnection) {
+                sslSocketFactory = config.sslContext.socketFactory
+            }
+
             connectTimeout = config.connectTimeout
             readTimeout = config.socketTimeout
 

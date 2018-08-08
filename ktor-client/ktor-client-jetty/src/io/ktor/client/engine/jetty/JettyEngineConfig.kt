@@ -9,7 +9,7 @@ import org.eclipse.jetty.util.ssl.*
  */
 class JettyEngineConfig : HttpClientEngineConfig() {
     /**
-     * A Jetty's [SslContextFactory]. By default it trusts all the certificates.
+     * A Jetty's [SslContextFactory].
      */
-    var sslContextFactory: SslContextFactory = SslContextFactory(true)
+    var sslContextFactory: SslContextFactory = SslContextFactory()
 }
