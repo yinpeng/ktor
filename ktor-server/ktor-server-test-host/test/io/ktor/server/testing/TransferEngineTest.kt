@@ -2,13 +2,11 @@ package io.ktor.server.testing
 
 import io.ktor.application.*
 import io.ktor.client.engine.*
-import io.ktor.content.*
+import io.ktor.http.content.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.server.engine.*
 import kotlinx.coroutines.experimental.io.jvm.javaio.*
-import org.junit.*
-import org.junit.Test
 import java.io.*
 import java.net.*
 import java.util.*
