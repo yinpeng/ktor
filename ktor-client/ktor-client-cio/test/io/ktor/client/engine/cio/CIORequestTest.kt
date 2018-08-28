@@ -15,7 +15,7 @@ import kotlin.test.*
 class CIORequestTest : TestWithKtor() {
     private val testSize = 2 * 1024
 
-    override val server: ApplicationEngine = embeddedServer(Netty, serverPort) {
+    override val server: ApplicationEngine = embeddedServer(io.ktor.server.cio.CIO, serverPort) {
         routing {
             get("/") {
                 val longHeader = call.request.headers["LongHeader"]!!
@@ -26,16 +26,29 @@ class CIORequestTest : TestWithKtor() {
         }
     }
 
-    @Test
-    fun longHeadersTest() = clientTest(CIO) {
-        test { client ->
-            val headerValue = "x".repeat(testSize)
+//    @Test
+//    fun longHeadersTest() = clientTest(CIO) {
+//        test { client ->
+//            val headerValue = "x".repeat(testSize)
+//
+//            val response = client.get<HttpResponse>(port = serverPort) {
+//                header("LongHeader", headerValue)
+//            }
+//
+//            assertEquals(headerValue, response.headers["LongHeader"])
+//        }
+//    }
+}
 
-            val response = client.get<HttpResponse>(port = serverPort) {
-                header("LongHeader", headerValue)
+
+fun main(args: Array<String>) {
+    val cio = io.ktor.server.cio.CIO
+    val netty = Netty
+    embeddedServer(netty, 8080) {
+        routing {
+            get("/") {
+               call.respond("Hello")
             }
-
-            assertEquals(headerValue, response.headers["LongHeader"])
         }
-    }
+    }.start(wait = true)
 }

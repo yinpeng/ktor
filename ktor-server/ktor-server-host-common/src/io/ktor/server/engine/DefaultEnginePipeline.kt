@@ -7,6 +7,7 @@ import io.ktor.http.*
 import io.ktor.util.pipeline.*
 import io.ktor.response.*
 import io.ktor.util.*
+import java.io.*
 import java.nio.channels.*
 import java.util.concurrent.*
 
@@ -26,18 +27,27 @@ fun defaultEnginePipeline(environment: ApplicationEnvironment): EnginePipeline {
             if (call.response.status() == null) {
                 call.respond(HttpStatusCode.NotFound)
             }
-        } catch (error: ChannelIOException) {
-            call.application.environment.logFailure(call, error)
         } catch (error: Throwable) {
             call.application.environment.logFailure(call, error)
-            try {
-                call.respond(HttpStatusCode.InternalServerError)
-            } catch (ignore: BaseApplicationResponse.ResponseAlreadySentException) {
+            if (error !is ChannelIOException && !error.isClosedConnection()) {
+                try {
+                    call.respond(HttpStatusCode.InternalServerError)
+                } catch (ignore: BaseApplicationResponse.ResponseAlreadySentException) {
+                }
             }
         }
     }
 
     return pipeline
+}
+
+private fun Throwable.isClosedConnection(): Boolean {
+    val message = message
+    if (this !is IOException || message == null) {
+        return false
+    }
+
+    return message.contains("Broken pipe") || message.contains("Connection reset by peer")
 }
 
 private fun ApplicationEnvironment.logFailure(call: ApplicationCall, cause: Throwable) {

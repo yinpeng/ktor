@@ -4,6 +4,6 @@ dependencies {
     compile project(":ktor-client:ktor-client-core:ktor-client-core-jvm")
     compile project(":ktor-http:ktor-http-cio")
     compile project(":ktor-network:ktor-network-tls")
-
+    compile project(":ktor-server:ktor-server-cio")
     testCompile project(":ktor-client:ktor-client-tests")
 }
