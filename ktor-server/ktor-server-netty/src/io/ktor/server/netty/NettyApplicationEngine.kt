@@ -34,7 +34,7 @@ class NettyApplicationEngine(environment: ApplicationEngineEnvironment, configur
         /**
          * Do not create separate call event group and reuse worker group for processing calls
          */
-        var shareWorkGroup: Boolean = false
+        var shareWorkGroup: Boolean = true
 
         /**
          * User-provided function to configure Netty's [ServerBootstrap]

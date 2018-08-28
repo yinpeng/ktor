@@ -2,7 +2,7 @@ description = ''
 dependencies {
     compile project(':ktor-server:ktor-server-host-common')
     compile group: 'io.netty', name: 'netty-codec-http2', version: netty_version
-    compile group: 'io.netty', name: 'netty-transport-native-epoll', version: netty_version
+    compile group: 'io.netty', name: 'netty-transport-native-epoll', version: netty_version, classifier: "linux-x86_64"
 
     compile group: 'org.eclipse.jetty.alpn', name: 'alpn-api', version: jetty_alpn_api_version
 
