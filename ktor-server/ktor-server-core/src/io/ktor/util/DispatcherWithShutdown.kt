@@ -21,6 +21,10 @@ class DispatcherWithShutdown(delegate: CoroutineDispatcher) : CoroutineDispatche
         if (shutdownPool.isInitialized()) shutdownPool.value.shutdown()
     }
 
+    override fun isDispatchNeeded(context: CoroutineContext): Boolean {
+        return delegate!!.isDispatchNeeded(context)
+    }
+
     override fun dispatch(context: CoroutineContext, block: Runnable) {
         when (shutdownPhase) {
             ShutdownPhase.None -> {

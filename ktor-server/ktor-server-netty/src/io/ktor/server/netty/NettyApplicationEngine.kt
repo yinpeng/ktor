@@ -5,7 +5,6 @@ import io.ktor.server.engine.*
 import io.ktor.util.*
 import io.netty.bootstrap.*
 import io.netty.channel.*
-import io.netty.channel.epoll.*
 import io.netty.channel.nio.*
 import io.netty.channel.socket.nio.*
 import kotlinx.coroutines.experimental.*
@@ -50,22 +49,22 @@ class NettyApplicationEngine(environment: ApplicationEngineEnvironment, configur
     private val configuration = Configuration().apply(configure)
 
     // accepts connections
-    private val connectionEventGroup = EpollEventLoopGroup(configuration.connectionGroupSize)
+    private val connectionEventGroup = NettyConnectionPool(configuration.connectionGroupSize)
 
     // processes socket data and parse HTTP, may also process calls if shareWorkGroup is true
     private val workerEventGroup = if (configuration.shareWorkGroup)
-        EpollEventLoopGroup(configuration.workerGroupSize + configuration.callGroupSize)
+        NettyWorkerPool(configuration.workerGroupSize + configuration.callGroupSize)
     else
-        EpollEventLoopGroup(configuration.workerGroupSize)
+        NettyWorkerPool(configuration.workerGroupSize)
 
     // processes calls
     private val callEventGroup = if (configuration.shareWorkGroup)
         workerEventGroup
     else
-        EpollEventLoopGroup(configuration.callGroupSize)
+        NettyCallPool(configuration.callGroupSize)
 
     private val dispatcherWithShutdown = DispatcherWithShutdown(NettyDispatcher)
-    private val engineDispatcherWithShutdown = DispatcherWithShutdown(workerEventGroup.asCoroutineDispatcher())
+    private val engineDispatcherWithShutdown = DispatcherWithShutdown(NettyDispatcher)
 
 
     private var channels: List<Channel>? = null
@@ -73,7 +72,7 @@ class NettyApplicationEngine(environment: ApplicationEngineEnvironment, configur
         ServerBootstrap().apply {
             configuration.configureBootstrap(this)
             group(connectionEventGroup, workerEventGroup)
-            channel(EpollServerSocketChannel::class.java)
+            channel(NioServerSocketChannel::class.java)
             childHandler(
                 NettyChannelInitializer(
                     pipeline, environment,
@@ -132,3 +131,18 @@ class NettyApplicationEngine(environment: ApplicationEngineEnvironment, configur
         return "Netty($environment)"
     }
 }
+
+/**
+ * [NioEventLoopGroup] for accepting connections
+ */
+class NettyConnectionPool(parallelism: Int) : NioEventLoopGroup(parallelism)
+
+/**
+ * [NioEventLoopGroup] for processing incoming requests and doing engine's internal work
+ */
+class NettyWorkerPool(parallelism: Int) : NioEventLoopGroup(parallelism)
+
+/**
+ * [NioEventLoopGroup] for processing [ApplicationCall] instances
+ */
+class NettyCallPool(parallelism: Int) : NioEventLoopGroup(parallelism)
