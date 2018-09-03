@@ -94,3 +94,26 @@ release {
 }
 
 afterReleaseBuild.dependsOn bintrayUpload
+
+afterEvaluate {
+    def allCompileKotlinTasks = subprojects
+            //.findAll { !it.path.contains("ktor-samples") }
+            .collect {
+                if (it.hasProperty("compileKotlin")) {
+                    //println(it)
+                    [it.compileKotlin]
+                } else {
+                    []
+                }
+            }.flatten()
+
+    task dokkaWebsite2(type: org.jetbrains.dokka.gradle.DokkaTask) {
+        kotlinTasks {
+            allCompileKotlinTasks
+        }
+        outputFormat = 'kotlin-website'
+        //outputFormat = 'html'
+        outputDirectory = "${rootProject.projectDir}/apidoc2"
+    }
+}
+
