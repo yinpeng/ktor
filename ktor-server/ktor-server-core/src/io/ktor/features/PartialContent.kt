@@ -63,8 +63,8 @@ class PartialContent(private val maxRangeCount: Int) {
         }
 
         if (!call.isGetOrHead()) {
-            val message =
-                HttpStatusCode.MethodNotAllowed.description("Method ${call.request.local.method.value} is not allowed with range request")
+            val message = HttpStatusCode.MethodNotAllowed
+                .description("Method ${call.request.local.method.value} is not allowed with range request")
             call.respond(message)
             context.finish()
             return
@@ -155,7 +155,7 @@ class PartialContent(private val maxRangeCount: Int) {
         ranges: List<LongRange>,
         length: Long
     ) {
-        val boundary = "ktor-boundary-" + nextNonce()
+        val boundary = "ktor-boundary-" + generateNonce()
 
         call.attributes.put(Compression.SuppressionAttribute, true) // multirange with compression is not supported yet
 

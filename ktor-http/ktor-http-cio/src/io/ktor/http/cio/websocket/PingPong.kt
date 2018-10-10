@@ -88,7 +88,7 @@ fun CoroutineScope.pinger(
                 }
             }
 
-            val pingMessage = "[ping ${nextNonce()} ping]"
+            val pingMessage = "[ping ${generateNonce()} ping]"
 
             val rc = withTimeoutOrNull(timeoutMillis, TimeUnit.MILLISECONDS) {
                 outgoing.sendPing(buffer, encoder, pingMessage)
