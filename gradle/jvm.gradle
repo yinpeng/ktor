@@ -82,6 +82,16 @@ kotlin {
         classifier 'test'
     }
 
+    configure(targets) {
+        compilations.all { compilation ->
+            if (compilation.name == "main") {
+                def compileTask = tasks.getByName(compilation.compileKotlinTaskName)
+                // dump declarations from main JVM module for binary-compatibility-validator
+                compileTask.kotlinOptions.freeCompilerArgs += ["-Xdump-declarations-to=${buildDir}/visibilities.json"]
+            }
+        }
+    }
+
     sourceSets {
         jvmMain.dependencies {
             api 'org.jetbrains.kotlin:kotlin-stdlib'

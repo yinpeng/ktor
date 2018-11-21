@@ -42,7 +42,9 @@ allprojects {
     apply plugin: 'kotlinx-atomicfu'
 
     apply from: rootProject.file('gradle/dokka.gradle')
-    apply from: rootProject.file('gradle/publish.gradle')
+    if (project.name != 'binary-compatibility-validator') {
+        apply from: rootProject.file('gradle/publish.gradle')
+    }
 
     apply from: rootProject.file('gradle/common.gradle')
     apply from: rootProject.file('gradle/jvm.gradle')
