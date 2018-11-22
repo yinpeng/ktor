@@ -59,8 +59,8 @@ internal class TLSServerHello(
     val version: TLSVersion,
     val serverSeed: ByteArray,
     val sessionId: ByteArray,
-    suite: Short,
-    val compressionMethod: Short,
+    suite: UShort,
+    val compressionMethod: UShort,
     val extensions: List<TLSExtension> = listOf()
 ) {
     val cipherSuite: CipherSuite = CIOCipherSuites.SupportedSuites.find { it.code == suite }

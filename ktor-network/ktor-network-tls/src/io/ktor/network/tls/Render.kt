@@ -43,7 +43,7 @@ internal fun BytePacketBuilder.writeTLSClientHello(
 
     writeShort((suites.size * 2).toShort())
     for (suite in suites) {
-        writeShort(suite.code)
+        writeShort(suite.code.toShort())
     }
 
     // compression is always null

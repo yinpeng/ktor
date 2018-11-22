@@ -21,8 +21,8 @@ enum class TLSAlertLevel(val code: Int) {
         /**
          * Find alert level by it's numeric [code] or fail
          */
-        fun byCode(code: Int): TLSAlertLevel = when (code) {
-            in 0..255 -> byCode[code]
+        fun byCode(code: Byte): TLSAlertLevel = when (code) {
+            in 0..255 -> byCode[code.toInt()]
             else -> null
         } ?: throw IllegalArgumentException("Invalid TLS record type code: $code")
     }
@@ -67,8 +67,8 @@ enum class TLSAlertType(val code: Int) {
         /**
          * Find TLS alert instance by it's numeric [code] or fail
          */
-        fun byCode(code: Int): TLSAlertType = when (code) {
-            in 0..255 -> byCode[code]
+        fun byCode(code: Byte): TLSAlertType = when (code) {
+            in 0..255 -> byCode[code.toInt()]
             else -> null
         } ?: throw IllegalArgumentException("Invalid TLS record type code: $code")
     }

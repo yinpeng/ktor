@@ -44,10 +44,10 @@ internal fun ByteReadPacket.readTLSServerHello(): TLSServerHello {
     val sessionId = ByteArray(32)
     readFully(sessionId, 0, sessionIdLength)
 
-    val suite = readShort()
+    val suite = readShort().toUShort()
 
-    val compressionMethod = readByte().toShort() and 0xff
-    if (compressionMethod.toInt() != 0) throw TLSException("Unsupported TLS compression method $compressionMethod (only null 0 compression method is supported)")
+    val compressionMethod = readByte().toUShort()
+    if (compressionMethod != 0.toUShort()) throw TLSException("Unsupported TLS compression method $compressionMethod (only null 0 compression method is supported)")
 
     if (remaining.toInt() == 0) return TLSServerHello(version, random, sessionId, suite, compressionMethod)
 
