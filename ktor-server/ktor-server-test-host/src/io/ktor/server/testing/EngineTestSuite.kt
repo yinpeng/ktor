@@ -343,24 +343,26 @@ abstract class EngineTestSuite<TEngine : ApplicationEngine, TConfiguration : App
             }
         }
 
-        withUrl("/files/${file.toRelativeString(targetClasses).urlPath()}") {
-            assertEquals(200, status.value)
+        repeat(100) {
+            withUrl("/files/${file.toRelativeString(targetClasses).urlPath()}") {
+                assertEquals(200, status.value)
 
-            val bytes = readBytes(100)
-            assertNotEquals(0, bytes.size)
+                val bytes = readBytes(100)
+                assertNotEquals(0, bytes.size)
 
-            // class file signature
-            assertEquals(0xca, bytes[0].toInt() and 0xff)
-            assertEquals(0xfe, bytes[1].toInt() and 0xff)
-            assertEquals(0xba, bytes[2].toInt() and 0xff)
-            assertEquals(0xbe, bytes[3].toInt() and 0xff)
-        }
+                // class file signature
+                assertEquals(0xca, bytes[0].toInt() and 0xff)
+                assertEquals(0xfe, bytes[1].toInt() and 0xff)
+                assertEquals(0xba, bytes[2].toInt() and 0xff)
+                assertEquals(0xbe, bytes[3].toInt() and 0xff)
+            }
 
-        withUrl("/files/${file.toRelativeString(targetClasses).urlPath()}2") {
-            assertEquals(404, status.value)
-        }
-        withUrl("/wefwefwefw") {
-            assertEquals(404, status.value)
+            withUrl("/files/${file.toRelativeString(targetClasses).urlPath()}2") {
+                assertEquals(404, status.value)
+            }
+            withUrl("/wefwefwefw") {
+                assertEquals(404, status.value)
+            }
         }
     }
 

@@ -6,7 +6,10 @@ import io.ktor.util.*
 import io.ktor.util.cio.*
 import io.ktor.util.pipeline.*
 import kotlinx.coroutines.*
+import org.slf4j.*
 import java.util.concurrent.*
+import java.util.concurrent.atomic.*
+import javax.servlet.*
 import javax.servlet.http.*
 import kotlin.coroutines.*
 
@@ -65,8 +68,41 @@ abstract class KtorServlet : HttpServlet(), CoroutineScope {
     }
 
     private fun asyncService(request: HttpServletRequest, response: HttpServletResponse) {
+        val completedByMe = AtomicBoolean(false)
+
+        fun completed(type: String, event: AsyncEvent?) {
+            if (!completedByMe.get()) {
+                LoggerFactory.getLogger("servlet").let { logger ->
+                    val cause = event?.throwable
+                    val exception = Exception("async completed $type", cause)
+
+                    if (cause != null) {
+                        logger.error("async completed $type", exception)
+                    } else {
+                        logger.error("async completed $type", exception)
+                    }
+                }
+            }
+        }
+
         val asyncContext = request.startAsync()!!.apply {
             timeout = 0L
+            addListener(object: AsyncListener {
+                override fun onComplete(event: AsyncEvent?) {
+                    completed("complete", event)
+                }
+
+                override fun onStartAsync(event: AsyncEvent?) {
+                }
+
+                override fun onTimeout(event: AsyncEvent?) {
+                    completed("timeout", event)
+                }
+
+                override fun onError(event: AsyncEvent?) {
+                    completed("error", event)
+                }
+            })
         }
 
         val asyncDispatchers = asyncDispatchers.value
@@ -83,6 +119,7 @@ abstract class KtorServlet : HttpServlet(), CoroutineScope {
                 enginePipeline.execute(call)
             } finally {
                 try {
+                    completedByMe.set(true)
                     asyncContext.complete()
                 } catch (alreadyCompleted: IllegalStateException) {
                     application.log.debug("AsyncContext is already completed due to previous I/O error",
