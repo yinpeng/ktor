@@ -37,13 +37,17 @@ class WeakTimeoutQueue(
      */
     fun register(job: Job): Registration {
         val now = clock.millis()
+        return register(job, now)
+    }
+
+    private fun register(job: Job, startTimeMillis: Long): Registration {
         val head = head
         if (cancelled) throw cancellationException()
 
-        val cancellable = JobTask(now + timeoutMillis, job)
+        val cancellable = JobTask(startTimeMillis + timeoutMillis, job)
         head.addLast(cancellable)
 
-        process(now, head, cancelled)
+        process(startTimeMillis, head, cancelled)
         if (cancelled) {
             val e = cancellationException()
             cancellable.cancel(e)
@@ -76,15 +80,13 @@ class WeakTimeoutQueue(
             val continuation = rawContinuation.intercepted()
 
             val wrapped = WeakTimeoutCoroutine(continuation.context, continuation)
-            val handle = register(wrapped)
-            wrapped.invokeOnCompletion(handle)
+            val startTimeMillis = clock.millis()
 
             val result = try {
                 if (wrapped.isCancelled) COROUTINE_SUSPENDED
                 else block.startCoroutineUninterceptedOrReturn(receiver = wrapped, completion = wrapped)
             } catch (t: Throwable) {
                 if (wrapped.tryComplete()) {
-                    handle.dispose()
                     throw t
                 }
                 else COROUTINE_SUSPENDED
@@ -92,11 +94,15 @@ class WeakTimeoutQueue(
 
             if (result !== COROUTINE_SUSPENDED) {
                 if (wrapped.tryComplete()) {
-                    handle.dispose()
                     result
                 }
                 else COROUTINE_SUSPENDED
-            } else COROUTINE_SUSPENDED
+            } else {
+                val handle = register(wrapped, startTimeMillis)
+                wrapped.invokeOnCompletion(handle)
+
+                COROUTINE_SUSPENDED
+            }
         }
     }
 

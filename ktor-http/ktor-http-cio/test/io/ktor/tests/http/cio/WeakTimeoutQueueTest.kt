@@ -34,11 +34,14 @@ class WeakTimeoutQueueTest {
 
     @Test
     fun testTimeoutPassed() = runBlocking {
+        launch {
+            q.process() // will be invoked later after suspension
+        }
+
         try {
             q.withTimeout {
                 suspendCoroutine<Unit> {
                     testClock.millis = 1001
-                    q.process()
                 }
             }
         } catch (expected: TimeoutCancellationException) {
@@ -59,6 +62,7 @@ class WeakTimeoutQueueTest {
             q.withTimeout {
                 throw MyException()
             }
+            @Suppress("UNREACHABLE_CODE")
             fail("Should fail before")
         } catch (expected: MyException) {
         }
@@ -71,6 +75,7 @@ class WeakTimeoutQueueTest {
                 yield()
                 throw MyException()
             }
+            @Suppress("UNREACHABLE_CODE")
             fail("Should fail before")
         } catch (expected: MyException) {
         }
