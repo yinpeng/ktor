@@ -1,0 +1,16 @@
+kotlin {
+    targets {
+        configure([iosArm32, iosArm64, macosX64, linuxX64, mingwX64]) {
+            compilations.main.cinterops {
+                libcurl {
+                    defFile 'posix/interop/libcurl.def'
+                    includeDirs.headerFilterOnly '/opt/local/include', '/usr/local/include'
+                }
+            }
+        }
+    }
+
+    sourceSets.posixMain.dependencies {
+        api project(':ktor-client:ktor-client-core')
+    }
+}

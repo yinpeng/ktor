@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.konan.target.HostManager
+
 buildscript {
     repositories {
         mavenLocal()
@@ -24,13 +26,12 @@ ext.publishLocal = project.hasProperty('publishLocal')
 
 apply from: 'gradle/experimental.gradle'
 
-def platforms = [
-    "js", "native"
-]
+def platforms = ["jvm", "js"]
 
 allprojects {
     group = 'io.ktor'
     version = configuredVersion
+    project.ext.hostManager = new HostManager()
 
     repositories {
         mavenLocal()
@@ -44,24 +45,32 @@ allprojects {
     apply plugin: 'kotlin-multiplatform'
     apply plugin: 'kotlinx-atomicfu'
 
+    apply from: rootProject.file('gradle/dokka.gradle')
     apply from: rootProject.file('gradle/publish.gradle')
 
     apply from: rootProject.file("gradle/common.gradle")
-    apply from: rootProject.file("gradle/jvm.gradle")
-    if (project.projectDir.listFiles().any { it.name == "js" }) {
-        apply from: rootProject.file("gradle/js.gradle")
+
+    platforms.each { platform ->
+        if (project.projectDir.listFiles().any { it.name == platform }) {
+            configure([it]) {
+                apply from: rootProject.file("gradle/${platform}.gradle")
+            }
+        }
     }
-    if (project.projectDir.listFiles().any { it.name == "native" }) {
-        apply from: rootProject.file("gradle/native.gradle")
+//    if (project.projectDir.listFiles().any { it.name == "jvm" }) {
+//        apply from: rootProject.file("gradle/jvm.gradle")
+//    }
+//    if (project.projectDir.listFiles().any { it.name == "js" }) {
+//        apply from: rootProject.file("gradle/js.gradle")
+//    }
+    if (project.projectDir.listFiles().any { it.name == "posix" || it.name == "darwin" }) {
+        apply from: rootProject.file("gradle/posix.gradle")
+    }
+    if (project.projectDir.listFiles().any { it.name == "darwin" }) {
+        apply from: rootProject.file("gradle/darwin.gradle")
     }
 
     kotlin {
-        targets {
-            if (System.getProperty('idea.active') == 'true') {
-                fromPreset(presets.linuxX64, 'native')
-            }
-        }
-
         configure(sourceSets) {
             def srcDir = name.endsWith('Main') ? 'src' : 'test'
             def resourcesPrefix = name.endsWith('Test') ? 'test-' : ''
