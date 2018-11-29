@@ -23,6 +23,6 @@ abstract class TestWithKtor {
 
     @After
     fun stopServer() {
-        server.stop(0, 0, TimeUnit.SECONDS)
+        server.stop(100, 300, TimeUnit.MILLISECONDS)
     }
 }
